@@ -1,4 +1,18 @@
+venv/
 
-venv/Lib/site-packages/open3d/cpu/pybind.cp311-win_amd64.pyd
-venv/Lib/site-packages/torch/lib/dnnl.lib
-venv/Lib/site-packages/torch/lib/torch_cpu.dll
+temp_emb/
+
+__pycache__/
+*.py[cod]
+
+*.log
+*.tmp
+*.bak
+
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+
+*.ply

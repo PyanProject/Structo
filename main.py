@@ -19,9 +19,8 @@ def main():
     print(f"Генерация эмбеддинга завершена. Размерность: {embedding.shape}")
 
     # Генерация 3D модели с полигонами
-    scene_filename = generate_3d_scene_from_embedding(embedding.cpu().numpy())
+    scene_filename = generate_3d_scene_from_embedding(embedding.cpu().numpy(), text)
     print(f"3D модель сохранена в файл: {scene_filename}")
 
 if __name__ == "__main__":
     main()
-
