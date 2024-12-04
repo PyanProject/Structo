@@ -1,0 +1,1 @@
+for devs: please, run: pip install -r requirements.txt

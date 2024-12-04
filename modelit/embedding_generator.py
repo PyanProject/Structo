@@ -10,6 +10,7 @@ class EmbeddingGenerator:
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.model = BertModel.from_pretrained('bert-base-uncased').to(self.device)  # Переносим модель на нужное устройство
         print("Инициализация генератора эмбеддингов завершена.")
+        print(f"Содержимое папки temp_emb: {os.listdir('temp_emb') if os.path.exists('temp_emb') else 'Папка не существует'}.")
 
     def generate_embeddings_batch(self, texts: list) -> torch.Tensor:
         """
@@ -29,20 +30,49 @@ class EmbeddingGenerator:
         """
         Генерирует эмбеддинг для одного текста.
         """
-        print(f"Генерация эмбеддинга для текста: {text[:50]}...")
-        return self.generate_embeddings_batch([text])[0]
+        embedding = self.generate_embeddings_batch([text])[0]
+        print(f"Генерация эмбеддинга завершена. Размерность: {embedding.shape}")
+        
+        # Сохраняем эмбеддинг
+        embedding_filepath = self.save_embedding(embedding)
+        if embedding_filepath:
+            print(f"Эмбеддинг успешно сохранён в файл: {embedding_filepath}")
+        else:
+            print("Ошибка при сохранении эмбеддинга.")
+        return embedding
 
     def save_embedding(self, embedding: torch.Tensor, output_dir: str = "temp_emb", unique_filename: bool = True) -> str:
         """
-        Сохраняет эмбеддинг в файл .npy в папку temp_emb.
+        Сохраняет эмбеддинг в файл .npy в папку temp_emb, ограничивая количество файлов до 10.
         """
-        os.makedirs(output_dir, exist_ok=True)
+        # Убедимся, что папка существует
+        if not os.path.exists(output_dir):
+            print(f"Папка {output_dir} не существует, создаём её.")
+            os.makedirs(output_dir)
+
+        # Проверка текущей рабочей директории
+        print(f"Текущая рабочая директория: {os.getcwd()}")
+
+        # Получаем список файлов в директории
+        files = os.listdir(output_dir)
+        files = [f for f in files if f.endswith('.npy')]  # фильтруем только .npy файлы
+
+        # Если файлов больше 10, удаляем старые
+        if len(files) >= 10:
+            oldest_file = min(files, key=lambda f: os.path.getctime(os.path.join(output_dir, f)))  # находим старейший файл
+            os.remove(os.path.join(output_dir, oldest_file))  # удаляем его
+            print(f"Удалён старый файл: {oldest_file}")
+
+        # Генерация уникального имени файла
         filename = "embedding.npy"
         if unique_filename:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"embedding_{timestamp}.npy"
 
         filepath = os.path.join(output_dir, filename)
+
+        # Проверка пути сохранения
+        print(f"Путь для сохранения эмбеддинга: {filepath}")
 
         try:
             np.save(filepath, embedding.cpu().numpy())  # Переводим на CPU перед сохранением

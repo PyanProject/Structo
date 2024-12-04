@@ -1,12 +1,10 @@
-import torch
 import numpy as np
 import open3d as o3d
 
 def generate_3d_scene_from_embedding(embedding: np.ndarray) -> str:
-    """
-    Генерирует 3D сцену на основе эмбеддинга.
-    Вместо облака точек генерируем меш с полигонами.
-    """
+
+    #Генерирует 3D сцену на основе эмбеддинга.
+
     print("Начинаем генерацию 3D сцены из эмбеддинга.")
     
     num_points = 1000  # Количество вершин

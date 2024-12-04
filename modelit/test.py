@@ -1,7 +1,5 @@
-import torch
+import os
 
-# Пример создания тензора
-voxels = torch.randn(10, 10, 10)  # 3D тензор
+#test fix temp_emb
 
-# Теперь можно использовать .view
-voxels = voxels.view(-1, *voxels.shape)
+print(os.listdir('temp_emb'))
