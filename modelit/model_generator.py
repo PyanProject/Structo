@@ -7,7 +7,8 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray) -> str:
     Генерирует 3D сцену на основе эмбеддинга.
     Вместо облака точек генерируем меш с полигонами.
     """
-    # Генерация случайных вершин и граней для 3D модели (пример)
+    print("Начинаем генерацию 3D сцены из эмбеддинга.")
+    
     num_points = 1000  # Количество вершин
     points = np.random.rand(num_points, 3)  # Случайные вершины
 
@@ -27,10 +28,12 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray) -> str:
     mesh.vertex_colors = o3d.utility.Vector3dVector(np.random.rand(num_points, 3))
 
     # Визуализация
+    print("Визуализация 3D модели...")
     o3d.visualization.draw_geometries([mesh])
 
     # Сохранение сцены в файл .ply
     scene_filename = "generated_mesh.ply"
     o3d.io.write_triangle_mesh(scene_filename, mesh)
+    print(f"3D модель сохранена в файл: {scene_filename}")
 
     return scene_filename
