@@ -1,6 +1,6 @@
 import torch
 from embedding_generator import generate_embedding_from_text
-from model_generator import generate_3d_scene_from_embedding, visualize_3d_scene
+from model_generator import generate_3d_scene_from_embedding
 
 def main():
     # Выбор устройства
@@ -14,9 +14,9 @@ def main():
     embedding = generate_embedding_from_text(text, device)
     print(f"Генерация эмбеддинга завершена. Размерность: {embedding.shape}")
 
-    # Генерация 3D модели
-    scene = generate_3d_scene_from_embedding(embedding.cpu().numpy())
-    visualize_3d_scene(scene)
+    # Генерация 3D модели с полигонами
+    scene_filename = generate_3d_scene_from_embedding(embedding.cpu().numpy())
+    print(f"3D модель сохранена в файл: {scene_filename}")
 
 if __name__ == "__main__":
     main()
