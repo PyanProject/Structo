@@ -1,5 +1,0 @@
-# venv large files
-
-modelit/venv/Lib/site-packages/open3d/cpu/pybind.cp311-win_amd64.pyd
-modelit/venv/Lib/site-packages/torch/lib/torch_cpu.dll
-modelit/venv/Lib/site-packages/torch/lib/dnnl.lib
