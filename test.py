@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Загрузка .ply файла
-ply_file = "model_8277e091.ply"
+ply_file = "models/model_8277e091.ply"
 mesh = trimesh.load(ply_file)
 
 # Извлечение данных о вершинах и гранях
