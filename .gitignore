@@ -1,6 +1,11 @@
 venv/
 
-temp_emb/
+!models/*
+!models/.gitkeep
+
+
+!temp_emb/*
+!temp_emb/.gitkeep
 
 __pycache__/
 *.py[cod]
