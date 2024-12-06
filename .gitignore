@@ -1,10 +1,10 @@
 venv/
 
-!models/*
+models/*
 !models/.gitkeep
 
 
-!temp_emb/*
+temp_emb/*
 !temp_emb/.gitkeep
 
 __pycache__/
