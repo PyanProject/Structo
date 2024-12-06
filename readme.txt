@@ -4,7 +4,7 @@
 This system generates 3D models from textual descriptions. It uses BERT to create embeddings from input text, which are then transformed into random 3D scenes using Open3D.
 
 ## Features
-- **Text Embedding Generation**: Uses BERT to convert text into embeddings.
+- **Text Embedding Generation**: Uses CLIP to convert text into embeddings.
 - **3D Scene Generation**: Uses Open3D to visualize and save randomly generated 3D scenes.
 - **Saving Embeddings**: Saves generated embeddings as `.npy` files in the `temp_emb` directory.
 
@@ -56,12 +56,6 @@ MIT License
 open3d - https://www.open3d.org/docs/release/index.html
 transformers - https://github.com/huggingface/transformers/blob/main/i18n/README_ru.md
 numpy - https://numpy.org/doc/stable/
-
-## load large files:
-
-https://drive.google.com/file/d/1ivyHzADX2YOCwJgi37EmtCS-X-N8eJqZ/view?usp=sharing
-
-## place to:
-venv/Lib/site-packages/open3d/cpupybind.cp311-win_amd64.pyd
-venv/Lib/site-packages/torch/lib/torch_cpu.dll
-venv/Lib/site-packages/torch/lib/dnnl.lib
+trimesh - https://trimesh.org/
+CLIP - https://github.com/openai/CLIP
+matplotlib - https://matplotlib.org/stable/index.html
