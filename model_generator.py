@@ -80,12 +80,16 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray, text: str, output_di
     # Устанавливаем цвет для каждой вершины
     mesh.visual.vertex_colors = (color * 255).astype(np.uint8)
 
+    '''
+
     # Визуализация
     print(f"Генерируем форму: {shape}, размер: {size_param}, цвет: {color}.")
     try:
         visualize_with_matplotlib(mesh)
     except Exception as e:
         print(f"Ошибка при визуализации: {e}")
+
+    '''
 
     # Сохранение сцены в уникальный файл
     manage_model_files(output_dir)  # Проверяем и удаляем старые файлы, если нужно

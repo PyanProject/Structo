@@ -5,7 +5,7 @@ from dataset import TemporaryDataset
 from gan_model import Generator, Discriminator, train_gan
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
-
+import open3d as o3d
 
 class Temporary3DDataset(Dataset):
     """
@@ -65,6 +65,13 @@ def main():
     scene_filename = generate_3d_scene_from_embedding(generated_embedding, text)
     print(f"3D модель сохранена в файл: {scene_filename}")
 
+    # Открытие и визуализация модели с использованием Open3D
+    print(f"Открываем 3D модель для визуализации с помощью Open3D...")
+    mesh = o3d.io.read_triangle_mesh(scene_filename)
+    if not mesh.is_empty():
+        o3d.visualization.draw_geometries([mesh])
+    else:
+        print("Ошибка при загрузке модели для визуализации.")
 
 if __name__ == "__main__":
     main()

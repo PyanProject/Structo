@@ -1,45 +1,55 @@
+import clip
 import torch
-from transformers import BertTokenizer, BertModel
 import numpy as np
-import datetime
 import os
+import datetime
 
 class EmbeddingGenerator:
     def __init__(self, device: torch.device):
         self.device = device
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.model = BertModel.from_pretrained('bert-base-uncased').to(self.device)  # Переносим модель на нужное устройство
-        print("Инициализация генератора эмбеддингов завершена.")
-        print(f"Содержимое папки temp_emb: {os.listdir('temp_emb') if os.path.exists('temp_emb') else 'Папка не существует'}.")
+        # Загружаем модель CLIP
+        self.model, self.preprocess = clip.load("ViT-B/32", device=self.device)
+        print("Инициализация генератора эмбеддингов с использованием CLIP завершена.")
 
-    def generate_embeddings_batch(self, texts: list) -> torch.Tensor:
+    def generate_embedding(self, text: str, additional_info: str = "", shape_info: dict = None) -> torch.Tensor:
         """
-        Генерирует эмбеддинги для списка текстов с использованием BERT.
+        Генерирует эмбеддинг для одного текста с использованием CLIP.
+        Дополнительная информация будет добавлена к тексту перед генерацией эмбеддинга.
         """
-        print(f"Начинаем генерацию эмбеддингов для {len(texts)} текстов.")
-        inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512).to(self.device)
-
+        # Добавляем дополнительную информацию и параметры формы
+        combined_text = self.combine_text(text, additional_info, shape_info)
+        
+        # Подготовка текста
+        text_input = clip.tokenize([combined_text]).to(self.device)
+        
+        # Генерация эмбеддинга
         with torch.no_grad():
-            outputs = self.model(**inputs)
-
-        embeddings = outputs.last_hidden_state.mean(dim=1)  # Средний эмбеддинг по всем токенам
-        print(f"Генерация эмбеддингов завершена. Размер эмбеддинга: {embeddings.shape}")
-        return embeddings
-
-    def generate_embedding(self, text: str) -> torch.Tensor:
-        """
-        Генерирует эмбеддинг для одного текста.
-        """
-        embedding = self.generate_embeddings_batch([text])[0]
-        print(f"Генерация эмбеддинга завершена. Размерность: {embedding.shape}")
+            text_features = self.model.encode_text(text_input)
+        
+        print(f"Генерация эмбеддинга с CLIP завершена. Размерность: {text_features.shape}")
         
         # Сохраняем эмбеддинг
-        embedding_filepath = self.save_embedding(embedding)
+        embedding_filepath = self.save_embedding(text_features)
         if embedding_filepath:
             print(f"Эмбеддинг успешно сохранён в файл: {embedding_filepath}")
         else:
             print("Ошибка при сохранении эмбеддинга.")
-        return embedding
+        return text_features
+
+    def combine_text(self, text: str, additional_info: str, shape_info: dict) -> str:
+        """
+        Объединяет основной текст с дополнительной информацией и параметрами формы.
+        """
+        # Добавляем дополнительную информацию к тексту
+        combined_text = f"{text}. {additional_info}"
+        
+        # Добавляем информацию о форме, если она предоставлена
+        if shape_info:
+            shape_description = f"Размер: {shape_info.get('size', 'не указан')}, Форма: {shape_info.get('shape', 'не указана')}, Ориентация: {shape_info.get('orientation', 'не указана')}"
+            combined_text = f"{combined_text}. {shape_description}"
+        
+        print(f"Комбинированный текст для эмбеддинга: {combined_text}")
+        return combined_text
 
     def save_embedding(self, embedding: torch.Tensor, output_dir: str = "temp_emb", unique_filename: bool = True) -> str:
         """

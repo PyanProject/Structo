@@ -1,25 +1,14 @@
-import trimesh
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import open3d as o3d
 
-# Загрузка .ply файла
-ply_file = "models/model_8277e091.ply"
-mesh = trimesh.load(ply_file)
+# Загрузка файла .ply
+file_path = "D:\GitHub\modelit\models\model_ac2dcbce.ply"  # Замените на путь к вашему файлу
+mesh = o3d.io.read_triangle_mesh(file_path)
 
-# Извлечение данных о вершинах и гранях
-vertices = mesh.vertices
-faces = mesh.faces
+# Проверка успешной загрузки
+if mesh.is_empty():
+    print("Не удалось загрузить файл .ply")
+else:
+    print("Файл .ply успешно загружен")
 
-# Отображение с помощью matplotlib
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-# Добавление полигонов в matplotlib
-ax.add_collection3d(Poly3DCollection(vertices[faces], alpha=0.5, edgecolor='k'))
-
-# Настройка осей
-ax.set_xlim(vertices[:, 0].min(), vertices[:, 0].max())
-ax.set_ylim(vertices[:, 1].min(), vertices[:, 1].max())
-ax.set_zlim(vertices[:, 2].min(), vertices[:, 2].max())
-
-plt.show()
+# Визуализация файла
+o3d.visualization.draw_geometries([mesh])
