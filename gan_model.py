@@ -1,39 +1,38 @@
+# gan_model.py
+
 import torch
 import torch.nn as nn
-
 
 class Generator(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(Generator, self).__init__()
         self.input_dim = input_dim
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 256),
+            nn.Linear(input_dim, 1024),
             nn.ReLU(),
-            nn.Linear(256, 512),
+            nn.Linear(1024, 2048),
             nn.ReLU(),
-            nn.Linear(512, output_dim),
+            nn.Linear(2048, output_dim),
             nn.Tanh()
         )
 
     def forward(self, x):
         return self.model(x)
 
-
 class Discriminator(nn.Module):
     def __init__(self, input_dim):
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 512),
+            nn.Linear(input_dim, 2048),
             nn.LeakyReLU(0.2),
-            nn.Linear(512, 256),
+            nn.Linear(2048, 1024),
             nn.LeakyReLU(0.2),
-            nn.Linear(256, 1),
+            nn.Linear(1024, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
         return self.model(x)
-
 
 def train_gan(generator, discriminator, dataloader, epochs, lr, device):
     """
@@ -49,7 +48,7 @@ def train_gan(generator, discriminator, dataloader, epochs, lr, device):
     criterion = torch.nn.BCELoss()
 
     for epoch in range(epochs):
-        for real_data, _ in dataloader:  # Путь к файлу игнорируем
+        for real_data, _ in dataloader:
             real_data = real_data.to(device)  # Преобразуем эмбеддинги в тензор и переносим на устройство
 
             batch_size = real_data.size(0)

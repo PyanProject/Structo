@@ -1,3 +1,5 @@
+# model_generator.py
+
 import numpy as np
 import trimesh
 import matplotlib.pyplot as plt
@@ -49,7 +51,7 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray, text: str, output_di
     print("Начинаем генерацию 3D сцены из эмбеддинга.")
     
     # Нормализация эмбеддинга
-    embedding_normalized = (embedding - embedding.mean()) / embedding.std()
+    embedding_normalized = (embedding - embedding.mean()) / (embedding.std() + 1e-8)
 
     # Преобразуем эмбеддинг в параметры
     shape_param = embedding_normalized[0]  # Для выбора формы
@@ -67,7 +69,7 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray, text: str, output_di
     elif shape_param < 0.66:
         shape = "cube"
     else:
-        shape = "pyramid"
+        shape = "cone"  # Изменено с "pyramid" на "cone" для совместимости с Trimesh
     
     # Генерация 3D объекта
     if shape == "sphere":
@@ -77,19 +79,8 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray, text: str, output_di
     else:
         mesh = trimesh.creation.cone(radius=size_param, height=size_param * 1.5)
 
-    # Устанавливаем цвет для каждой вершины
+    # Устанавливаем цвет для модели
     mesh.visual.vertex_colors = (color * 255).astype(np.uint8)
-
-    '''
-
-    # Визуализация
-    print(f"Генерируем форму: {shape}, размер: {size_param}, цвет: {color}.")
-    try:
-        visualize_with_matplotlib(mesh)
-    except Exception as e:
-        print(f"Ошибка при визуализации: {e}")
-
-    '''
 
     # Сохранение сцены в уникальный файл
     manage_model_files(output_dir)  # Проверяем и удаляем старые файлы, если нужно

@@ -1,0 +1,180 @@
+<!-- templates/index.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Генератор 3D Моделей из Текста</title>
+    <!-- Добавленный meta элемент -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            text-align: center;
+            padding-top: 20px;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            margin: auto;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px 0px #000;
+        }
+        input[type=text] {
+            width: 80%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+        input[type=submit] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input[type=submit]:hover {
+            background-color: #45a049;
+        }
+        #viewer {
+            width: 100%;
+            height: 500px;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+        .download-link {
+            margin-top: 20px;
+        }
+        #error-message {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Создание 3D Модели из Текста</h1>
+        <form id="generate-form">
+            <label for="text">Введите текст:</label><br>
+            <input type="text" id="text" name="text" placeholder="Например: Красная сфера с радиусом 1" required><br><br>
+            <input type="submit" value="Создать 3D Модель">
+        </form>
+        <div id="viewer"></div>
+        <div class="download-link" id="download-link" style="display: none;">
+            <a href="#" id="download-url">Скачать 3D модель</a>
+        </div>
+        <div id="error-message"></div>
+    </div>
+
+    <!-- Подключение Three.js через CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Подключение PLYLoader через CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/PLYLoader.js"></script>
+    <!-- Подключение OrbitControls через CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        document.getElementById('generate-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const text = document.getElementById('text').value;
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({text: text}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('error-message').innerText = data.error;
+                    return;
+                }
+                const modelUrl = data.model_url;
+                // Устанавливаем ссылку для скачивания
+                document.getElementById('download-url').href = modelUrl;
+                document.getElementById('download-link').style.display = 'block';
+                // Визуализируем модель
+                visualizeModel(modelUrl);
+                // Очистка сообщения об ошибке
+                document.getElementById('error-message').innerText = '';
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                document.getElementById('error-message').innerText = 'Произошла ошибка при генерации модели.';
+            });
+        });
+
+        function visualizeModel(url) {
+            // Очистка предыдущей сцены
+            const viewer = document.getElementById('viewer');
+            viewer.innerHTML = '';
+
+            // Создание сцены, камеры и рендерера
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({antialias: true});
+            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            viewer.appendChild(renderer.domElement);
+
+            // Установка фона сцены
+            scene.background = new THREE.Color(0xffffff); // Белый фон, можно изменить на желаемый цвет
+
+            // Добавление света
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // мягкий белый свет
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            // Загрузка модели
+            const loader = new THREE.PLYLoader();
+            loader.load(
+                url,
+                function (geometry) {
+                    geometry.computeVertexNormals();
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: 0xFFFFFF, 
+                        flatShading: false,
+                        vertexColors: true, // Убедитесь, что PLY файл содержит цвета
+                        metalness: 0.5,
+                        roughness: 0.5
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    scene.add(mesh);
+                    // Масштабирование модели
+                    mesh.scale.multiplyScalar(1);
+                    // Центрирование модели
+                    geometry.computeBoundingBox();
+                    const center = new THREE.Vector3();
+                    geometry.boundingBox.getCenter(center);
+                    mesh.position.sub(center);
+                },
+                function (xhr) {
+                    console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
+                },
+                function (error) {
+                    console.error('Ошибка при загрузке PLY файла:', error);
+                    document.getElementById('error-message').innerText = 'Ошибка при загрузке 3D модели.';
+                }
+            );
+
+            camera.position.z = 5;
+
+            // Контроллеры для вращения модели
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
