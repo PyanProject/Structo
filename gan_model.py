@@ -1,5 +1,3 @@
-# gan_model.py
-
 import torch
 import torch.nn as nn
 
@@ -35,55 +33,48 @@ class Discriminator(nn.Module):
         return self.model(x)
 
 def train_gan(generator, discriminator, dataloader, epochs, lr, device):
-    """
-    Тренировка GAN с использованием заданного датасета.
-    """
     generator.train()
     discriminator.train()
 
-    # Оптимизаторы
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
-
     criterion = torch.nn.BCELoss()
 
     for epoch in range(epochs):
-        for real_data, _ in dataloader:
-            real_data = real_data.to(device)  # Преобразуем эмбеддинги в тензор и переносим на устройство
+        total_loss_D = 0.0
+        total_loss_G = 0.0
+        batches = 0
 
+        for real_data, _ in dataloader:
+            real_data = real_data.to(device)
             batch_size = real_data.size(0)
 
-            # Генерация меток
             real_labels = torch.ones((batch_size, 1)).to(device)
             fake_labels = torch.zeros((batch_size, 1)).to(device)
 
-            # === Обучение дискриминатора ===
             optimizer_D.zero_grad()
-
-            # Потери для реальных данных
             real_preds = discriminator(real_data)
             loss_real = criterion(real_preds, real_labels)
 
-            # Генерация фейковых данных
             noise = torch.randn(batch_size, generator.input_dim).to(device)
             fake_data = generator(noise)
-
-            # Потери для фейковых данных
             fake_preds = discriminator(fake_data.detach())
             loss_fake = criterion(fake_preds, fake_labels)
 
-            # Итоговые потери дискриминатора
             loss_D = loss_real + loss_fake
             loss_D.backward()
             optimizer_D.step()
 
-            # === Обучение генератора ===
             optimizer_G.zero_grad()
-
-            # Потери генератора
             fake_preds = discriminator(fake_data)
-            loss_G = criterion(fake_preds, real_labels)  # Хотим, чтобы фейковые данные были приняты как реальные
+            loss_G = criterion(fake_preds, real_labels)
             loss_G.backward()
             optimizer_G.step()
 
-        print(f"Эпоха [{epoch + 1}/{epochs}] - Потери D: {loss_D.item():.4f}, Потери G: {loss_G.item():.4f}")
+            total_loss_D += loss_D.item()
+            total_loss_G += loss_G.item()
+            batches += 1
+
+        avg_loss_D = total_loss_D / batches
+        avg_loss_G = total_loss_G / batches
+        print(f"[GAN TRAIN] Эпоха [{epoch + 1}/{epochs}] - Потери D: {avg_loss_D:.4f}, Потери G: {avg_loss_G:.4f}")

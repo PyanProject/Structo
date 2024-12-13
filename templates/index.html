@@ -1,180 +1,576 @@
-<!-- templates/index.html -->
-
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Генератор 3D Моделей из Текста</title>
-    <!-- Добавленный meta элемент -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
-            text-align: center;
-            padding-top: 20px;
-        }
-        .container {
-            background-color: white;
-            padding: 30px;
-            margin: auto;
-            width: 80%;
-            max-width: 800px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px 0px #000;
-        }
-        input[type=text] {
-            width: 80%;
-            padding: 12px 20px;
-            margin: 8px 0;
-            box-sizing: border-box;
-        }
-        input[type=submit] {
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        input[type=submit]:hover {
-            background-color: #45a049;
-        }
-        #viewer {
-            width: 100%;
-            height: 500px;
-            margin-top: 20px;
-            border: 1px solid #ccc;
-        }
-        .download-link {
-            margin-top: 20px;
-        }
-        #error-message {
-            color: red;
-            margin-top: 10px;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Пример дизайна</title>
+<style>
+  body {
+    margin: 0;
+    font-family: sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    color: #ddd;
+    background: linear-gradient(-45deg, rgba(24,24,24,1), rgba(40,40,40,1), rgba(0,0,0,1), rgba(24,24,24,1));
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  @keyframes gradientBG {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+  }
+
+  .top-header {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    text-align: center;
+    color: #ccc;
+    font-size: 1.2rem;
+    font-weight: bold;
+    z-index: 1;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 20px;
+    max-width: 600px;
+    width: 100%;
+    z-index: 1;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50px;
+    padding: 10px 20px;
+    width: 100%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    position: relative;
+    box-sizing: border-box;
+    cursor: pointer; 
+  }
+
+  .search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-size: 1rem;
+    padding-right: 40px;
+    box-sizing: border-box;
+    cursor: text;
+  }
+
+  .search-bar input::placeholder {
+    color: #aaa;
+  }
+
+  .search-bar::after {
+    content: '';
+    position: absolute;
+    right: 20px;
+    width: 30px;
+    height: 30px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ccc" width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2C5.582 2 2 5.582 2 10s3.582 8 8 8c1.706 0 3.289-.57 4.555-1.523l3.484 3.484a1 1 0 0 0 1.414-1.414l-3.484-3.484A7.952 7.952 0 0 0 18 10c0-4.418-3.582-8-8-8zM4 10c0-3.309 2.691-6 6-6s6 2.691 6 6-2.691 6-6 6-6-2.691-6-6z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px 14px;
+    pointer-events: none;
+  }
+
+  .idea {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #ccc;
+    width: 100%;
+    text-align: left;
+  }
+
+  .idea span {
+    color: #fff;
+  }
+
+  #error-message {
+    color:red; 
+    margin-top:20px;
+    width:100%;
+    text-align:left;
+  }
+
+  .result-box {
+    margin-top: 50px;
+    width: 100%;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 100px;
+    box-sizing: border-box;
+    text-align: center;
+    color: #fff;
+    font-size: 1rem;
+    min-height: 200px; 
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
+  }
+
+  .top-menu {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    display: flex;
+    gap: 20px;
+    font-size: 0.9rem;
+    align-items: center;
+    z-index: 1;
+  }
+
+  .top-menu a {
+    color: #ccc;
+    text-decoration: none;
+    transition: color 0.3s ease;
+    cursor: pointer;
+  }
+
+  .top-menu a:hover {
+    color: #fff;
+  }
+
+  .lang-select {
+    display: flex;
+    gap: 10px;
+  }
+
+  .footer {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    color: #999;
+    font-size: 0.8rem;
+    z-index: 1;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right:0;
+    bottom:0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items:center;
+    justify-content:center;
+    z-index: 9999;
+  }
+
+  .modal {
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    width: 300px;
+    color: #fff;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  .modal * {
+    box-sizing: border-box;
+  }
+
+  .modal h2 {
+    margin-top:0;
+    margin-bottom:20px;
+    text-align: center;
+  }
+
+  .modal input[type="text"],
+  .modal input[type="password"],
+  .modal input[type="email"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom:10px;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border-radius:5px;
+    outline:none;
+  }
+
+  .modal .options-row {
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    margin-bottom:10px;
+  }
+
+  .modal .remember {
+    display:flex;
+    align-items:center;
+    font-size:0.9rem;
+  }
+
+  .modal .remember input[type="checkbox"] {
+    margin-right:5px;
+  }
+
+  .modal .forgot-link a {
+    color: #6ab4ff;
+    text-decoration:none;
+    font-size:0.9rem;
+  }
+
+  .modal .forgot-link a:hover {
+    text-decoration:underline;
+  }
+
+  .modal .actions {
+    text-align:center;
+    margin-top:20px;
+  }
+
+  .modal .actions button {
+    margin: 0 5px;
+    padding: 10px 15px;
+    background: rgba(255,255,255,0.1);
+    border:none;
+    color:#fff;
+    cursor:pointer;
+    border-radius:5px;
+  }
+
+  .modal .actions button:hover {
+    background: rgba(255,255,255,0.2);
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Создание 3D Модели из Текста</h1>
-        <form id="generate-form">
-            <label for="text">Введите текст:</label><br>
-            <input type="text" id="text" name="text" placeholder="Например: Красная сфера с радиусом 1" required><br><br>
-            <input type="submit" value="Создать 3D Модель">
-        </form>
-        <div id="viewer"></div>
-        <div class="download-link" id="download-link" style="display: none;">
-            <a href="#" id="download-url">Скачать 3D модель</a>
-        </div>
-        <div id="error-message"></div>
+<div class="top-header" id="header-title">Modelit</div>
+
+<div class="top-menu">
+  <div class="lang-select">
+    <a href="#" onclick="setLanguage('ru')">RU</a>
+    <a href="#" onclick="setLanguage('en')">EN</a>
+  </div>
+  <a href="#" id="account-link" onclick="openModal()">Account</a>
+</div>
+
+<div class="container">
+  <div class="search-bar" id="search-bar">
+    <input id="search-input" type="text" placeholder="Type some text or add an image..." />
+  </div>
+  <div class="idea">
+    <span id="idea-label">Идея:</span> <span id="idea-text">Фембой Вадим в чулках</span>
+    <a href="#" style="color:#6ab4ff; text-decoration:none;" id="prompt-guide">Гайд по промптам</a>
+  </div>
+  <div id="error-message"></div>
+  <div class="result-box" id="result-box">
+    Здесь будет результат
+    <div id="download-link" style="display:none; margin-top:10px;">
+      <a href="#" id="download-url" style="color:#6ab4ff;">Скачать 3D модель</a>
     </div>
+  </div>
+</div>
 
-    <!-- Подключение Three.js через CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Подключение PLYLoader через CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/PLYLoader.js"></script>
-    <!-- Подключение OrbitControls через CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
-    <script>
-        document.getElementById('generate-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const text = document.getElementById('text').value;
-            fetch('/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({text: text}),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('error-message').innerText = data.error;
-                    return;
-                }
-                const modelUrl = data.model_url;
-                // Устанавливаем ссылку для скачивания
-                document.getElementById('download-url').href = modelUrl;
-                document.getElementById('download-link').style.display = 'block';
-                // Визуализируем модель
-                visualizeModel(modelUrl);
-                // Очистка сообщения об ошибке
-                document.getElementById('error-message').innerText = '';
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                document.getElementById('error-message').innerText = 'Произошла ошибка при генерации модели.';
-            });
-        });
+<div class="footer">
+  &copy; Pyan Inc.
+</div>
 
-        function visualizeModel(url) {
-            // Очистка предыдущей сцены
-            const viewer = document.getElementById('viewer');
-            viewer.innerHTML = '';
+<!-- Модальное окно -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="auth-modal">
+    <h2 id="modal-title">Вход</h2>
+    <div id="login-form">
+      <input type="text" id="login-username" placeholder="Логин"/>
+      <input type="password" id="login-password" placeholder="Пароль"/>
+      <div class="options-row">
+        <div class="remember">
+          <input type="checkbox" id="remember-me"/>
+          <label for="remember-me" id="remember-label">Запомнить меня</label>
+        </div>
+        <div class="forgot-link"><a href="#" id="forgot-link">Забыли пароль?</a></div>
+      </div>
+      <div class="actions">
+        <button id="login-button">Войти</button>
+        <button id="switch-to-register">Зарегистрироваться</button>
+      </div>
+    </div>
+    <div id="register-form" style="display:none;">
+      <input type="text" id="register-username" placeholder="Логин"/>
+      <input type="password" id="register-password" placeholder="Пароль"/>
+      <input type="password" id="register-password-confirm" placeholder="Повторите пароль"/>
+      <input type="email" id="register-email" placeholder="Email"/>
+      <div class="actions">
+        <button id="register-button">Зарегистрироваться</button>
+        <button id="switch-to-login">Назад</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-            // Создание сцены, камеры и рендерера
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({antialias: true});
-            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
-            viewer.appendChild(renderer.domElement);
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-            // Установка фона сцены
-            scene.background = new THREE.Color(0xffffff); // Белый фон, можно изменить на желаемый цвет
+<script>
+  const texts = {
+    en: {
+      headerTitle: "Modelit",
+      account: "Account",
+      placeholder: "Type some text or add an image...",
+      ideaLabel: "Idea:",
+      ideaText: "Femboy Vadim in stockings",
+      promptGuide: "Prompt Guide",
+      resultBox: "Result will be here",
+      modalTitleLogin: "Login",
+      loginPlaceholderUser: "Username",
+      loginPlaceholderPass: "Password",
+      rememberLabel: "Remember me",
+      forgotPass: "Forgot password?",
+      loginBtn: "Login",
+      registerBtn: "Register",
+      modalTitleRegister: "Register",
+      regPlaceholderUser: "Username",
+      regPlaceholderPass: "Password",
+      regPlaceholderPass2: "Confirm Password",
+      regPlaceholderEmail: "Email",
+      registerDo: "Register",
+      registerBack: "Back",
+      footer: "© Pyan Inc.",
+      genErrorEmpty: "Please enter a description.",
+      genErrorProcess: "Generating model...",
+      genErrorFail: "Error generating model.",
+      genErrorLoad: "Error loading 3D model."
+    },
+    ru: {
+      headerTitle: "Modelit",
+      account: "Аккаунт",
+      placeholder: "Введите текст или добавьте изображение...",
+      ideaLabel: "Идея:",
+      ideaText: "Фембой Вадим в чулках",
+      promptGuide: "Гайд по промптам",
+      resultBox: "Здесь будет результат",
+      modalTitleLogin: "Вход",
+      loginPlaceholderUser: "Логин",
+      loginPlaceholderPass: "Пароль",
+      rememberLabel: "Запомнить меня",
+      forgotPass: "Забыли пароль?",
+      loginBtn: "Войти",
+      registerBtn: "Зарегистрироваться",
+      modalTitleRegister: "Регистрация",
+      regPlaceholderUser: "Логин",
+      regPlaceholderPass: "Пароль",
+      regPlaceholderPass2: "Повторите пароль",
+      regPlaceholderEmail: "Email",
+      registerDo: "Зарегистрироваться",
+      registerBack: "Назад",
+      footer: "© Pyan Inc.",
+      genErrorEmpty: "Пожалуйста, введите описание модели.",
+      genErrorProcess: "Генерация модели...",
+      genErrorFail: "Ошибка при генерации модели.",
+      genErrorLoad: "Ошибка при загрузке 3D модели."
+    }
+  };
 
-            // Добавление света
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // мягкий белый свет
-            scene.add(ambientLight);
+  let currentLang = 'ru';
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-            directionalLight.position.set(1, 1, 1).normalize();
-            scene.add(directionalLight);
+  function setLanguage(lang) {
+    currentLang = lang;
+    const t = texts[lang];
+    document.getElementById('header-title').textContent = t.headerTitle;
+    document.getElementById('account-link').textContent = t.account;
+    document.getElementById('search-input').placeholder = t.placeholder;
+    document.getElementById('idea-label').textContent = t.ideaLabel;
+    document.getElementById('idea-text').textContent = t.ideaText;
+    document.getElementById('prompt-guide').textContent = t.promptGuide;
+    document.getElementById('result-box').textContent = t.resultBox;
+    document.querySelector('.footer').textContent = t.footer;
 
-            // Загрузка модели
-            const loader = new THREE.PLYLoader();
-            loader.load(
-                url,
-                function (geometry) {
-                    geometry.computeVertexNormals();
-                    const material = new THREE.MeshStandardMaterial({ 
-                        color: 0xFFFFFF, 
-                        flatShading: false,
-                        vertexColors: true, // Убедитесь, что PLY файл содержит цвета
-                        metalness: 0.5,
-                        roughness: 0.5
-                    });
-                    const mesh = new THREE.Mesh(geometry, material);
-                    scene.add(mesh);
-                    // Масштабирование модели
-                    mesh.scale.multiplyScalar(1);
-                    // Центрирование модели
-                    geometry.computeBoundingBox();
-                    const center = new THREE.Vector3();
-                    geometry.boundingBox.getCenter(center);
-                    mesh.position.sub(center);
-                },
-                function (xhr) {
-                    console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
-                },
-                function (error) {
-                    console.error('Ошибка при загрузке PLY файла:', error);
-                    document.getElementById('error-message').innerText = 'Ошибка при загрузке 3D модели.';
-                }
-            );
+    document.getElementById('modal-title').textContent = t.modalTitleLogin;
+    document.getElementById('login-username').placeholder = t.loginPlaceholderUser;
+    document.getElementById('login-password').placeholder = t.loginPlaceholderPass;
+    document.getElementById('remember-label').textContent = t.rememberLabel;
+    document.getElementById('forgot-link').textContent = t.forgotPass;
+    document.getElementById('login-button').textContent = t.loginBtn;
+    document.getElementById('switch-to-register').textContent = t.registerBtn;
 
-            camera.position.z = 5;
+    document.getElementById('register-username').placeholder = t.regPlaceholderUser;
+    document.getElementById('register-password').placeholder = t.regPlaceholderPass;
+    document.getElementById('register-password-confirm').placeholder = t.regPlaceholderPass2;
+    document.getElementById('register-email').placeholder = t.regPlaceholderEmail;
+    document.getElementById('register-button').textContent = t.registerDo;
+    document.getElementById('switch-to-login').textContent = t.registerBack;
+  }
 
-            // Контроллеры для вращения модели
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  window.onload = function() {
+    setLanguage('ru');
 
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-            animate();
+    const modalOverlay = document.getElementById('modal-overlay');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const modalTitle = document.getElementById('modal-title');
+
+    function openModal() {
+      modalOverlay.style.display = 'flex';
+      showLogin();
+    }
+
+    function closeModal() {
+      modalOverlay.style.display = 'none';
+    }
+
+    modalOverlay.addEventListener('click', function(e) {
+      if (e.target === modalOverlay) {
+        closeModal();
+      }
+    });
+
+    document.getElementById('switch-to-register').addEventListener('click', showRegister);
+    document.getElementById('switch-to-login').addEventListener('click', showLogin);
+
+    function showLogin() {
+      loginForm.style.display = 'block';
+      registerForm.style.display = 'none';
+      modalTitle.textContent = texts[currentLang].modalTitleLogin;
+    }
+
+    function showRegister() {
+      loginForm.style.display = 'none';
+      registerForm.style.display = 'block';
+      modalTitle.textContent = texts[currentLang].modalTitleRegister;
+    }
+
+    const searchInput = document.getElementById('search-input');
+    const errorMessage = document.getElementById('error-message');
+    const resultBox = document.getElementById('result-box');
+    const downloadLink = document.getElementById('download-link');
+    const downloadUrl = document.getElementById('download-url');
+    const searchBar = document.getElementById('search-bar');
+
+    function generateModel() {
+      const t = texts[currentLang];
+      const text = searchInput.value.trim();
+      if (!text) {
+        errorMessage.innerText = t.genErrorEmpty;
+        return;
+      }
+      errorMessage.innerText = t.genErrorProcess;
+      resultBox.innerHTML = '<div class="loader"></div>';
+      downloadLink.style.display = 'none';
+
+      fetch('/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({text: text}),
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          errorMessage.innerText = data.error;
+          resultBox.innerHTML = t.genErrorFail;
+          return;
         }
-    </script>
+        const modelUrl = data.model_url;
+        downloadUrl.href = modelUrl;
+        downloadLink.style.display = 'block';
+        errorMessage.innerText = '';
+        visualizeModel(modelUrl);
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        errorMessage.innerText = t.genErrorFail;
+        resultBox.innerHTML = t.genErrorFail;
+      });
+    }
+
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault(); 
+        generateModel();
+      }
+    });
+
+    searchBar.addEventListener('click', function(e) {
+      // Если клик пришёлся не на поле ввода, запускаем генерацию
+      if (e.target.id !== 'search-input') {
+        generateModel();
+      }
+    });
+
+    function visualizeModel(url) {
+      const t = texts[currentLang];
+      resultBox.innerHTML = '';
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, resultBox.clientWidth / resultBox.clientHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({antialias: true});
+      renderer.setSize(resultBox.clientWidth, resultBox.clientHeight);
+      resultBox.appendChild(renderer.domElement);
+
+      scene.background = new THREE.Color(0xffffff);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.position.set(1, 1, 1).normalize();
+      scene.add(directionalLight);
+
+      const pointLight = new THREE.PointLight(0xffffff, 1);
+      pointLight.position.set(10, 10, 10);
+      scene.add(pointLight);
+
+      const loader = new THREE.PLYLoader();
+      loader.load(
+        url,
+        function (geometry) {
+          geometry.computeVertexNormals();
+          const material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            metalness: 0.5,
+            roughness: 0.5
+          });
+          const mesh = new THREE.Mesh(geometry, material);
+          scene.add(mesh);
+          mesh.scale.multiplyScalar(1);
+          geometry.computeBoundingBox();
+          const center = new THREE.Vector3();
+          geometry.boundingBox.getCenter(center);
+          mesh.position.sub(center);
+        },
+        function (xhr) {
+          console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
+        },
+        function (error) {
+          console.error('Ошибка при загрузке PLY файла:', error);
+          errorMessage.innerText = t.genErrorLoad;
+        }
+      );
+
+      camera.position.z = 5;
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+  };
+</script>
 </body>
 </html>
