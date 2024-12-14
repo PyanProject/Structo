@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Пример дизайна</title>
+<title>Modelit</title>
 <style>
   body {
     margin: 0;
@@ -26,15 +26,26 @@
     100% {background-position: 0% 50%;}
   }
 
+  /* Общий контейнер верхней панели */
   .top-header {
     position: absolute;
-    top: 20px;
+    top: 0;
+    left: 0;
     width: 100%;
-    text-align: center;
-    color: #ccc;
-    font-size: 1.2rem;
+    display: flex;
+    justify-content: space-between; /* Распределяем элементы по краям */
+    align-items: center; /* Выравниваем элементы по вертикали */
+    padding: 10px 20px; /* Отступы для симметрии */
+    box-sizing: border-box;
+    font-size: 24px;
     font-weight: bold;
-    z-index: 1;
+    color: white;
+    /*background: rgba(0, 0, 0, 0.5); /* Прозрачный фон */
+  }
+
+  /* Заголовок */
+  .top-header #header-title {
+    margin: 0;
   }
 
   .container {
@@ -272,7 +283,7 @@
     <input id="search-input" type="text" placeholder="Type some text or add an image..." />
   </div>
   <div class="idea">
-    <span id="idea-label">Идея:</span> <span id="idea-text">Фембой Вадим в чулках</span>
+    <span id="idea-label">Идея:</span> <span id="idea-text">Красная сфера с радиусом 1</span>
     <a href="#" style="color:#6ab4ff; text-decoration:none;" id="prompt-guide">Гайд по промптам</a>
   </div>
   <div id="error-message"></div>
@@ -285,7 +296,7 @@
 </div>
 
 <div class="footer">
-  &copy; Pyan Inc.
+  &copy; Pyan Inc. 2024
 </div>
 
 <!-- Модальное окно -->
@@ -329,9 +340,9 @@
     en: {
       headerTitle: "Modelit",
       account: "Account",
-      placeholder: "Type some text or add an image...",
+      placeholder: "Type some text...",
       ideaLabel: "Idea:",
-      ideaText: "Femboy Vadim in stockings",
+      ideaText: "A red sphere with a radius of 1",
       promptGuide: "Prompt Guide",
       resultBox: "Result will be here",
       modalTitleLogin: "Login",
@@ -348,7 +359,7 @@
       regPlaceholderEmail: "Email",
       registerDo: "Register",
       registerBack: "Back",
-      footer: "© Pyan Inc.",
+      footer: "© Pyan Inc. 2024",
       genErrorEmpty: "Please enter a description.",
       genErrorProcess: "Generating model...",
       genErrorFail: "Error generating model.",
@@ -357,9 +368,9 @@
     ru: {
       headerTitle: "Modelit",
       account: "Аккаунт",
-      placeholder: "Введите текст или добавьте изображение...",
+      placeholder: "Введите текст...",
       ideaLabel: "Идея:",
-      ideaText: "Фембой Вадим в чулках",
+      ideaText: "Красная сфера с радиусом 1",
       promptGuide: "Гайд по промптам",
       resultBox: "Здесь будет результат",
       modalTitleLogin: "Вход",
@@ -376,7 +387,7 @@
       regPlaceholderEmail: "Email",
       registerDo: "Зарегистрироваться",
       registerBack: "Назад",
-      footer: "© Pyan Inc.",
+      footer: "© Pyan Inc. 2024",
       genErrorEmpty: "Пожалуйста, введите описание модели.",
       genErrorProcess: "Генерация модели...",
       genErrorFail: "Ошибка при генерации модели.",
