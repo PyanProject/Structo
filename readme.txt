@@ -49,13 +49,3 @@ When setting up the environment:
 
 ## License
 MIT License
-
-# FOR DEVS:
-
-## lib docs:
-open3d - https://www.open3d.org/docs/release/index.html
-transformers - https://github.com/huggingface/transformers/blob/main/i18n/README_ru.md
-numpy - https://numpy.org/doc/stable/
-trimesh - https://trimesh.org/
-CLIP - https://github.com/openai/CLIP
-matplotlib - https://matplotlib.org/stable/index.html
