@@ -15,6 +15,7 @@
     background-size: 400% 400%;
     animation: gradientBG 15s ease infinite;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     position: relative;
@@ -26,24 +27,21 @@
     100% {background-position: 0% 50%;}
   }
 
-  /* Общий контейнер верхней панели */
   .top-header {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     display: flex;
-    justify-content: space-between; /* Распределяем элементы по краям */
-    align-items: center; /* Выравниваем элементы по вертикали */
-    padding: 10px 20px; /* Отступы для симметрии */
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
     box-sizing: border-box;
     font-size: 24px;
     font-weight: bold;
     color: white;
-    /*background: rgba(0, 0, 0, 0.5); /* Прозрачный фон */
   }
 
-  /* Заголовок */
   .top-header #header-title {
     margin: 0;
   }
@@ -55,23 +53,24 @@
     justify-content: center;
     position: relative;
     padding: 20px;
-    max-width: 600px;
+    max-width: 800px; /* Максимальная ширина */
     width: 100%;
-    z-index: 1;
+    margin: 0 auto; /* Центрируем по горизонтали */
+    flex: 1;
   }
 
   .search-bar {
-    display: flex;
-    align-items: center;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50px;
-    padding: 10px 20px;
-    width: 100%;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-    position: relative;
-    box-sizing: border-box;
-    cursor: pointer; 
-  }
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50px;
+  padding: 10px 20px;
+  max-width: 800px;
+  width: 100%;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  box-sizing: border-box;
+  position: relative; /* Добавляем позиционирование для дочерних элементов */
+}
 
   .search-bar input {
     flex: 1;
@@ -80,61 +79,119 @@
     outline: none;
     color: #fff;
     font-size: 1rem;
-    padding-right: 40px;
     box-sizing: border-box;
-    cursor: text;
   }
 
   .search-bar input::placeholder {
     color: #aaa;
   }
 
-  .search-bar::after {
-    content: '';
+    #generate-button {
     position: absolute;
-    right: 20px;
+    right: 20px; /* Фиксируем кнопку справа внутри .search-bar */
+    top: 50%; /* Смещаем по вертикали */
+    transform: translateY(-50%); /* Центрируем по вертикали */
     width: 30px;
     height: 30px;
     background: rgba(255,255,255,0.1);
     border-radius: 50%;
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ccc" width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 2C5.582 2 2 5.582 2 10s3.582 8 8 8c1.706 0 3.289-.57 4.555-1.523l3.484 3.484a1 1 0 0 0 1.414-1.414l-3.484-3.484A7.952 7.952 0 0 0 18 10c0-4.418-3.582-8-8-8zM4 10c0-3.309 2.691-6 6-6s6 2.691 6 6-2.691 6-6 6-6-2.691-6-6z"/></svg>');
+    border: none;
+    cursor: pointer;
+   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path fill="%23ffffff" d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>');
     background-repeat: no-repeat;
     background-position: center;
     background-size: 14px 14px;
-    pointer-events: none;
-  }
+    transition: background-color 0.3s, box-shadow 0.3s;
+    }
 
-  .idea {
-    margin-top: 10px;
+    #generate-button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+    }
+
+    #error-message {
+    color: #aaa;
+    margin-top: 10px; /* Отступ сверху от блока идеи */
+    margin-left: 0; /* Сброс левого отступа */
+    width: 100%; /* Занимает всю ширину */
+    max-width: 800px; /* Ограничение ширины */
+    text-align: left; /* Выравнивание по левому краю */
     font-size: 0.9rem;
-    color: #ccc;
-    width: 100%;
-    text-align: left;
-  }
-
-  .idea span {
-    color: #fff;
-  }
-
-  #error-message {
-    color:red; 
-    margin-top:20px;
-    width:100%;
-    text-align:left;
-  }
-
-  .result-box {
-    margin-top: 50px;
-    width: 100%;
-    border: 1px solid rgba(255,255,255,0.3);
-    padding: 100px;
     box-sizing: border-box;
-    text-align: center;
-    color: #fff;
-    font-size: 1rem;
-    min-height: 200px; 
-    background: rgba(255,255,255,0.05);
+    }
+
+
+    .idea-container {
+    display: flex;
+    justify-content: space-between; /* Кнопка справа */
+    align-items: center;
+    width: 100%; /* Занимает всю ширину */
+    max-width: 800px; /* Ограничение по ширине как у search-bar */
+    margin-top: 10px; /* Отступ от блока ввода текста */
+    padding: 0px; /* Горизонтальные отступы как у search-bar */
+    box-sizing: border-box; /* Учитываем padding */
+    }
+
+    .idea {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #ddd;
+      text-align: left; /* Выравниваем текст по левому краю */
+      margin: 0; /* Убираем дополнительные отступы */
+    }
+
+    .prompt-guide {
+    color: #6ab4ff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.3s, transform 0.2s;
+  }
+
+    .prompt-guide:hover {
+      color: #fff;
+      transform: scale(1.05); /* Легкое увеличение */
+    }
+
+
+    .result-box {
+    position: relative; /* Убедимся, что кнопка позиционируется внутри окна визуализации */
+    margin-top: 20px;
+    width: 100%;
+    max-width: 800px; /* Ограничиваем ширину */
+    height: 50vh; /* Увеличенная высота */
+    background: #333; /* Серый фон */
+    border: 1px solid rgba(255,255,255,0.2);
+    box-sizing: border-box;
     border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Убираем скроллинг, если содержимое больше окна */
+    margin: 20px auto; /* Центрирование по горизонтали */
+  }
+
+  #download-button {
+    position: absolute;
+    top: 10px; /* Расположим кнопку в правом верхнем углу */
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    z-index: 10; /* Убедимся, что кнопка отображается поверх всего */
+    background-image: url('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="#ffffff" d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 10px 10px;
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+
+  #download-button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
   }
 
   .top-menu {
@@ -166,12 +223,15 @@
 
   .footer {
     position: absolute;
-    bottom: 20px;
-    width: 100%;
+    bottom: 10px;
+    left: 0;
+    right: 0;
     text-align: center;
     color: #999;
     font-size: 0.8rem;
-    z-index: 1;
+    border-top: 1px solid rgba(255, 255, 255, 0.1); /* Легкая нижняя граница */
+    padding-top: 10px; /* Добавляем отступ сверху */
+    box-sizing: border-box; /* Учитываем padding */
   }
 
   .modal-overlay {
@@ -278,28 +338,30 @@
   <a href="#" id="account-link" onclick="openModal()">Account</a>
 </div>
 
-<div class="container">
-  <div class="search-bar" id="search-bar">
-    <input id="search-input" type="text" placeholder="Type some text or add an image..." />
+<div class="search-bar" id="search-bar">
+  <input id="search-input" type="text" placeholder="Введите текст..." />
+  <button id="generate-button" type="button"></button>
+</div>
+
+  <div class="idea-container">
+    <div class="idea">
+      <span id="idea-label">Идея:</span> 
+      <span id="idea-text">Красная сфера с радиусом 1</span>
+    </div>
+    <a href="#" id="prompt-guide" class="prompt-guide">Гайд по промптам</a>
   </div>
-  <div class="idea">
-    <span id="idea-label">Идея:</span> <span id="idea-text">Красная сфера с радиусом 1</span>
-    <a href="#" style="color:#6ab4ff; text-decoration:none;" id="prompt-guide">Гайд по промптам</a>
-  </div>
+  
   <div id="error-message"></div>
+
   <div class="result-box" id="result-box">
-    Здесь будет результат
+    <button id="download-button" onclick="downloadModel()"></button>
     <div id="download-link" style="display:none; margin-top:10px;">
       <a href="#" id="download-url" style="color:#6ab4ff;">Скачать 3D модель</a>
     </div>
   </div>
-</div>
 
-<div class="footer">
-  &copy; Pyan Inc. 2024
-</div>
+<div class="footer">&copy; Pyan Inc. 2024</div>
 
-<!-- Модальное окно -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal" id="auth-modal">
     <h2 id="modal-title">Вход</h2>
@@ -363,7 +425,8 @@
       genErrorEmpty: "Please enter a description.",
       genErrorProcess: "Generating model...",
       genErrorFail: "Error generating model.",
-      genErrorLoad: "Error loading 3D model."
+      genErrorLoad: "Error loading 3D model.",
+      genSuccess: "Generated!"
     },
     ru: {
       headerTitle: "Modelit",
@@ -391,7 +454,8 @@
       genErrorEmpty: "Пожалуйста, введите описание модели.",
       genErrorProcess: "Генерация модели...",
       genErrorFail: "Ошибка при генерации модели.",
-      genErrorLoad: "Ошибка при загрузке 3D модели."
+      genErrorLoad: "Ошибка при загрузке 3D модели.",
+      genSuccess: "Сгенерировано!"
     }
   };
 
@@ -425,6 +489,27 @@
     document.getElementById('switch-to-login').textContent = t.registerBack;
   }
 
+  function openModal() {
+  const modalOverlay = document.getElementById('modal-overlay');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const modalTitle = document.getElementById('modal-title');
+  
+  modalOverlay.style.display = 'flex';
+  showLogin();
+
+  function showLogin() {
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+    modalTitle.textContent = texts[currentLang].modalTitleLogin;
+  }
+
+  function showRegister() {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+    modalTitle.textContent = texts[currentLang].modalTitleRegister;
+  }
+  }
   window.onload = function() {
     setLanguage('ru');
 
@@ -432,7 +517,7 @@
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const modalTitle = document.getElementById('modal-title');
-
+    
     function openModal() {
       modalOverlay.style.display = 'flex';
       showLogin();
@@ -469,43 +554,66 @@
     const downloadLink = document.getElementById('download-link');
     const downloadUrl = document.getElementById('download-url');
     const searchBar = document.getElementById('search-bar');
+    const generateButton = document.getElementById('generate-button');
+    const button = document.getElementById('download-button');
+
+    generateButton.addEventListener('click', () => {
+      const text = searchInput.value.trim();
+      if (text) {
+        generateModel();
+      } else {
+        alert('Введите текст для генерации модели!');
+      }
+    });
+
+    let modelDownloadUrl = ''; // Переменная для сохранения ссылки на модель
 
     function generateModel() {
-      const t = texts[currentLang];
-      const text = searchInput.value.trim();
-      if (!text) {
-        errorMessage.innerText = t.genErrorEmpty;
+    const t = texts[currentLang];
+    const text = searchInput.value.trim();
+    
+    if (!text) {
+        if (errorMessage) errorMessage.innerText = t.genErrorEmpty;
         return;
-      }
-      errorMessage.innerText = t.genErrorProcess;
-      resultBox.innerHTML = '<div class="loader"></div>';
-      downloadLink.style.display = 'none';
+    }
 
-      fetch('/generate', {
+    if (errorMessage) errorMessage.innerText = t.genErrorProcess; // "Генерация модели..."*/
+    //if (resultBox) resultBox.innerHTML = '<div class="loader"></div>';
+
+    fetch('/generate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify({text: text}),
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.error) {
-          errorMessage.innerText = data.error;
-          resultBox.innerHTML = t.genErrorFail;
-          return;
+        body: JSON.stringify({ text: text }),
+    })
+        .then((r) => r.json())
+        .then((data) => {
+            if (data.error) {
+                if (errorMessage) errorMessage.innerText = data.error;
+                if (resultBox) resultBox.textContent = t.genErrorFail;
+                return;
+            }
+
+            const modelUrl = data.model_url;
+            modelDownloadUrl = modelUrl; // Сохраняем ссылку для скачивания
+
+            visualizeModel(modelUrl, () => {
+                if (errorMessage) errorMessage.innerText = t.genSuccess; // "Сгенерировано!"
+            });
+        })
+        .catch((err) => {
+            console.error(err);
+            if (errorMessage) errorMessage.innerText = t.genErrorFail;
+        });
+}
+
+    function downloadModel() {
+        if (modelDownloadUrl) {
+            window.location.href = modelDownloadUrl; // Перенаправляем на ссылку для скачивания
+        } else {
+            alert('Модель ещё не сгенерирована!');
         }
-        const modelUrl = data.model_url;
-        downloadUrl.href = modelUrl;
-        downloadLink.style.display = 'block';
-        errorMessage.innerText = '';
-        visualizeModel(modelUrl);
-      })
-      .catch((error) => {
-        console.error('Error:', error);
-        errorMessage.innerText = t.genErrorFail;
-        resultBox.innerHTML = t.genErrorFail;
-      });
     }
 
     searchInput.addEventListener('keydown', function(e) {
@@ -516,14 +624,14 @@
     });
 
     searchBar.addEventListener('click', function(e) {
-      // Если клик пришёлся не на поле ввода, запускаем генерацию
       if (e.target.id !== 'search-input') {
         generateModel();
       }
     });
 
-    function visualizeModel(url) {
+    function visualizeModel(url, callback) {
       const t = texts[currentLang];
+      
       resultBox.innerHTML = '';
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(75, resultBox.clientWidth / resultBox.clientHeight, 0.1, 1000);
@@ -531,7 +639,7 @@
       renderer.setSize(resultBox.clientWidth, resultBox.clientHeight);
       resultBox.appendChild(renderer.domElement);
 
-      scene.background = new THREE.Color(0xffffff);
+      scene.background = new THREE.Color(0x333333);
 
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
       scene.add(ambientLight);
@@ -548,6 +656,12 @@
       loader.load(
         url,
         function (geometry) {
+          if (!geometry || geometry.attributes.position.count === 0) {
+            console.error('Empty geometry');
+            resultBox.textContent = t.genErrorFail;
+            callback(false);
+            return;
+          }
           geometry.computeVertexNormals();
           const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
@@ -556,11 +670,51 @@
           });
           const mesh = new THREE.Mesh(geometry, material);
           scene.add(mesh);
-          mesh.scale.multiplyScalar(1);
+          camera.position.set(0, 0, 5);
+          mesh.scale.multiplyScalar(1); // Увеличим для наглядности
           geometry.computeBoundingBox();
           const center = new THREE.Vector3();
           geometry.boundingBox.getCenter(center);
           mesh.position.sub(center);
+
+          camera.position.z = 5;
+          const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+          function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+          }
+          animate();
+          const downloadButton = document.createElement('button');
+            downloadButton.id = 'download-button';
+            downloadButton.style.position = 'absolute';
+            downloadButton.style.top = '10px';
+            downloadButton.style.right = '10px';
+            downloadButton.style.width = '40px';
+            downloadButton.style.height = '40px';
+            downloadButton.style.background = 'rgba(255, 255, 255, 0.1)';
+            downloadButton.style.borderRadius = '50%';
+            downloadButton.style.border = 'none';
+            downloadButton.style.cursor = 'pointer';
+            downloadButton.style.zIndex = '10';
+            downloadButton.style.backgroundImage = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="%23ffffff" d="M256 0a256 256 0 1 0 0 512A256 256 0 1 0 256 0zM244.7 395.3l-112-112c-4.6-4.6-5.9-11.5-3.5-17.4s8.3-9.9 14.8-9.9l64 0 0-96c0-17.7 14.3-32 32-32l32 0c17.7 0 32 14.3 32 32l0 96 64 0c6.5 0 12.3 3.9 14.8 9.9s1.1 12.9-3.5 17.4l-112 112c-6.2 6.2-16.4 6.2-22.6 0z"/></svg>')`;
+            downloadButton.style.backgroundRepeat = 'no-repeat';
+            downloadButton.style.backgroundPosition = 'center';
+            downloadButton.style.backgroundSize = '18px 18px';  
+
+            downloadButton.onclick = () => {
+                if (url) {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'model.ply'; // Укажите имя файла
+                    link.click();
+                } else {
+                    alert('Модель не найдена!');
+                }
+            };
+            resultBox.appendChild(downloadButton);
+          callback(true);
         },
         function (xhr) {
           console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
@@ -568,18 +722,9 @@
         function (error) {
           console.error('Ошибка при загрузке PLY файла:', error);
           errorMessage.innerText = t.genErrorLoad;
+          callback(false);
         }
       );
-
-      camera.position.z = 5;
-      const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-      function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        renderer.render(scene, camera);
-      }
-      animate();
     }
   };
 </script>
