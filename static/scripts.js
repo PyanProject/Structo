@@ -2,7 +2,7 @@ const texts = {
   en: {
     headerTitle: "Modelit",
     account: "Account",
-    placeholder: "Type some text...",
+    placeholder: "Enter the prompt...",
     ideaLabel: "Idea:",
     ideaText: "A red sphere with a radius of 1",
     promptGuide: "Prompt Guide",
@@ -27,11 +27,12 @@ const texts = {
     genErrorFail: "Error generating model.",
     genErrorLoad: "Error loading 3D model.",
     genSuccess: "Generated!"
+    
   },
   ru: {
     headerTitle: "Modelit",
     account: "Аккаунт",
-    placeholder: "Введите текст...",
+    placeholder: "Введите промпт...",
     ideaLabel: "Идея:",
     ideaText: "Красная сфера с радиусом 1",
     promptGuide: "Гайд по промптам",

@@ -67,5 +67,14 @@ def download_file(filename):
         return jsonify({'error': 'Файл не найден.'}), 404
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True, mimetype='application/octet-stream')
 
+
+@app.route('/prompt_guide')
+def prompt_guide():
+    return render_template('prompt_guide.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

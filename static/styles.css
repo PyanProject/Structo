@@ -6,7 +6,7 @@ body {
     color: #ddd;
     background: linear-gradient(-45deg, rgba(24,24,24,1), rgba(40,40,40,1), rgba(0,0,0,1), rgba(24,24,24,1));
     background-size: 400% 400%;
-    animation: gradientBG 15s ease infinite;
+    animation: gradientBG 35s ease infinite;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -222,7 +222,6 @@ body {
     text-align: center;
     color: #999;
     font-size: 0.8rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1); /* Легкая нижняя граница */
     padding-top: 10px; /* Добавляем отступ сверху */
     box-sizing: border-box; /* Учитываем padding */
   }
@@ -318,3 +317,108 @@ body {
   .modal .actions button:hover {
     background: rgba(255,255,255,0.2);
   }
+
+/* начало блока для гайдов */
+
+.important {
+  color: red;
+  font-weight: bold;
+}
+
+  .prompt-guide {
+    color: #6ab4ff;
+    text-decoration: none;
+    font-size: 1rem;
+}
+
+.prompt-guide:hover {
+    text-decoration: underline;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 15px;
+    background: #6ab4ff;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+.button:hover {
+    background: #4a9ce8;
+}
+
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 800px;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Заголовки */
+.content h1, .content h2 {
+  margin: 0 0 20px 0;
+  color: #6ab4ff;
+  font-size: 1.8rem;
+}
+
+/* Абзацы */
+.content p {
+  margin: 0 0 20px 0;
+  font-size: 1rem;
+  color: #ccc;
+  line-height: 1.6;
+}
+
+/* Список контактов */
+.content ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+  text-align: left;
+  width: 100%;
+}
+
+.content ul li {
+  margin: 10px 0;
+  font-size: 1rem;
+  color: #ddd;
+  display: flex;
+  align-items: center;
+}
+
+.content ul li:before {
+  content: '•';
+  color: #6ab4ff;
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+/* Кнопка "Вернуться на главную" */
+.content .button {
+  display: inline-block;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  background: #6ab4ff;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background 0.3s ease, transform 0.2s;
+  margin-top: 20px;
+}
+
+.content .button:hover {
+  background: #4a9ce8;
+  transform: scale(1.05);
+}

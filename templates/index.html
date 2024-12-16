@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="top-header" id="header-title">Modelit</div>
+    <div class="top-header" id="header-title">
+        <a href="{{ url_for('about') }}" style="text-decoration: none; color: inherit;">Modelit</a>
+    </div>
 
     <div class="top-menu">
         <div class="lang-select">
@@ -18,7 +20,7 @@
     </div>
 
     <div class="search-bar" id="search-bar">
-        <input id="search-input" type="text" placeholder="Введите текст..." />
+        <input id="search-input" type="text" placeholder="Введите промпт..." />
         <button id="generate-button" type="button"></button>
     </div>
 
@@ -27,7 +29,7 @@
             <span id="idea-label">Идея:</span> 
             <span id="idea-text">Красная сфера с радиусом 1</span>
         </div>
-        <a href="#" id="prompt-guide" class="prompt-guide">Гайд по промптам</a>
+        <a href="{{ url_for('prompt_guide') }}" id="prompt-guide" class="prompt-guide">Гайд по промптам</a>
     </div>
 
     <div id="error-message"></div>
