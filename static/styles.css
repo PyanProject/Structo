@@ -93,7 +93,7 @@ body {
    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path fill="%23ffffff" d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>');
     background-repeat: no-repeat;
     background-position: center;
-    background-size: 14px 14px;
+    background-size: 10px 10px;
     transition: background-color 0.3s, box-shadow 0.3s;
     }
 
@@ -326,7 +326,7 @@ body {
 }
 
   .prompt-guide {
-    color: #6ab4ff;
+    color: #fff;
     text-decoration: none;
     font-size: 1rem;
 }
@@ -338,7 +338,7 @@ body {
 .button {
     display: inline-block;
     padding: 10px 15px;
-    background: #6ab4ff;
+    background: #333;
     color: #fff;
     text-decoration: none;
     border-radius: 5px;
@@ -346,7 +346,7 @@ body {
 }
 
 .button:hover {
-    background: #4a9ce8;
+    background: #333;
 }
 
 
@@ -360,7 +360,8 @@ body {
   padding: 20px;
   box-sizing: border-box;
   text-align: center;
-  background: rgba(0, 0, 0, 0.8);
+  /*background: #000; /* Серый фон */
+  border: 1px solid rgba(255,255,255,0.2);
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
@@ -368,7 +369,7 @@ body {
 /* Заголовки */
 .content h1, .content h2 {
   margin: 0 0 20px 0;
-  color: #6ab4ff;
+  color: #fff;
   font-size: 1.8rem;
 }
 
@@ -399,7 +400,7 @@ body {
 
 .content ul li:before {
   content: '•';
-  color: #6ab4ff;
+  color: #fff;
   font-size: 1.2rem;
   margin-right: 10px;
 }
@@ -411,7 +412,8 @@ body {
   font-size: 1rem;
   font-weight: bold;
   color: #fff;
-  background: #6ab4ff;
+  background: #333;
+  border: 1px solid rgba(255,255,255,0.2);
   text-decoration: none;
   border-radius: 5px;
   transition: background 0.3s ease, transform 0.2s;
@@ -419,6 +421,6 @@ body {
 }
 
 .content .button:hover {
-  background: #4a9ce8;
+  background: #333;
   transform: scale(1.05);
 }
