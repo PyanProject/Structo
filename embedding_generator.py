@@ -54,7 +54,7 @@ class EmbeddingGenerator:
 
         files = os.listdir(output_dir)
         files = [f for f in files if f.endswith('.npy')]
-        if len(files) >= 10:
+        if len(files) >= 50:
             oldest_file = min(files, key=lambda f: os.path.getctime(os.path.join(output_dir, f)))
             os.remove(os.path.join(output_dir, oldest_file))
             print(f"[EMBED] Удалён старый файл: {oldest_file}")
