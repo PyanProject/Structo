@@ -1,24 +1,24 @@
 body {
-    margin: 0;
-    font-family: sans-serif;
-    height: 100vh;
-    overflow: hidden;
-    color: #ddd;
-    background: linear-gradient(-45deg, rgba(24,24,24,1), rgba(40,40,40,1), rgba(0,0,0,1), rgba(24,24,24,1));
-    background-size: 400% 400%;
-    animation: gradientBG 35s ease infinite;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
+  margin: 0;
+  font-family: sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  color: #ddd;
+  background: linear-gradient(-45deg, rgba(1,50,32,1), rgba(0,0,0,1), rgba(0,0,0,1), rgba(75,0,130,1));
+  background-size: 400% 400%;
+  animation: gradientBG 60s ease infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
 
-  @keyframes gradientBG {
-    0% {background-position: 0% 50%;}
-    50% {background-position: 100% 50%;}
-    100% {background-position: 0% 50%;}
-  }
+@keyframes gradientBG {
+  0% {background-position: 0% 75%;}
+  50% {background-position: 100% 50%;}
+  100% {background-position: 0% 75%;}
+}
 
   .top-header {
     position: absolute;
@@ -224,6 +224,17 @@ body {
     font-size: 0.8rem;
     padding-top: 10px; /* Добавляем отступ сверху */
     box-sizing: border-box; /* Учитываем padding */
+  }
+
+
+  .version-info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 0;
+    color: #999;
+    font-size: 0.7rem;
+
   }
 
   .modal-overlay {
