@@ -1,4 +1,4 @@
-!RU!
+#### RU
 
 ОПИСАНИЕ
 **Modelit** — это веб-приложение для генерации 3D-моделей на основе текстовых описаний. Пользователь может описать желаемую модель, указывая цвет, форму и размер, и система сгенерирует соответствующую 3D-модель. Приложение использует генеративно-состязательные сети (GAN), а также предварительно обученные модели, такие как CLIP, для преобразования текста в эмбеддинги.
@@ -73,7 +73,7 @@
 # Лицензия
 MIT License
 
-!ENG!
+#### ENG
 
 # Description
 **Modelit** is a web application for generating 3D models from text descriptions. Users can specify the desired model's color, shape, and size, and the system will generate a corresponding 3D model. The application leverages Generative Adversarial Networks (GANs) and pre-trained models like CLIP to transform text into embeddings.
