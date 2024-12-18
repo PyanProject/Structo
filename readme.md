@@ -143,3 +143,6 @@ MIT License
 # Author
 © 2024 Pyan Inc.  
 For questions and suggestions, contact us at: `alvttttttt@gmai.com`.
+
+# License
+MIT License
