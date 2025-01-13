@@ -4,6 +4,9 @@ import numpy as np
 import os
 import datetime
 import torch.nn as nn
+import spacy
+from langdetect import detect
+from spellchecker import SpellChecker
 
 class EmbeddingGenerator:
     def __init__(self, device: torch.device, reduced_dim: int = 512):
@@ -11,12 +14,74 @@ class EmbeddingGenerator:
         self.reduced_dim = reduced_dim
         self.model, self.preprocess = clip.load("ViT-B/32", device=self.device)
         print("[EMBED] Инициализация генератора эмбеддингов с использованием CLIP завершена.")
+
         if self.model is not None:
             print(f"[EMBED] CLIP модель загружена: {self.model}")
         if self.reduced_dim != 512:
             self.reduce_dim_layer = nn.Linear(512, self.reduced_dim).to(self.device)
             print(f"[EMBED] Добавлен линейный слой для уменьшения размерности до {self.reduced_dim}.")
 
+        self.models = {
+            "ru": spacy.load("ru_core_news_sm"),
+            "en": spacy.load("en_core_web_sm"),
+        }
+        print('[EMBED] Модели обработки текста spaCy загружены успешно :)')
+
+        # self.spell = SpellChecker() эта хуйня бесполезна, пока нет нового датасета
+
+    ''' def preprocess_text(self, text, lang="en"):
+        text = self.clean_text(text)
+        text = self.correct_spelling(text)
+        text = self.correct_grammar(text, lang)
+        validation_err = self.validate_prompt(text)
+        if validation_err:
+            raise ValueError(validation_err)
+        return text
+    
+    def correct_spelling(self, text):
+        words = text.split()
+        corrected_words = [self.spell.correction(word) if word not in self.spell else word for word in words]
+        return ' '.join(corrected_words)
+
+    def validate_prompt(self, text):
+        if len(text.split()) < 3:
+            return "Описание слишком короткое"
+        if any(char.isdigit() for char in text):
+            return "Текст содержит цифры, которые из промпта делают гавно"
+        return None 
+        
+        это тоже собственно бесполезно без датасета
+        
+        '''
+
+    def extract_keywords(self, text: str):
+        lang = detect(text)
+        print(f"[EMBED] Определён язык: {lang}")
+
+        nlp = self.models.get(lang)
+        if not nlp:
+            raise ValueError(f"[ERROR] Для языка '{lang} модель не загружена...'")
+        
+        doc = nlp(text)
+        keywords = []
+
+        for ent in doc.ents:
+            keywords.append((ent.text, ent.label_))
+
+        for token in doc:
+            if token.is_alpha and (token.is_stop is False):
+                keywords.append((token.text, "KEYWORD"))
+
+        return keywords
+    
+    def highlight_keywords(self, text: str):
+        keywords = self.extract_keywords(text)
+        highlighted_text = text
+        for keyword, label in keywords:
+            highlighted_text = highlighted_text.replace(keyword, f"[{keyword}]")
+
+        return highlighted_text, keywords
+    
     def generate_embedding(self, text: str, additional_info: str = "", shape_info: dict = None) -> torch.Tensor:
         combined_text = self.combine_text(text, additional_info, shape_info)
         print(f"[EMBED] Генерация эмбеддинга для текста: '{combined_text}'")
