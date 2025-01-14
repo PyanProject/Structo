@@ -3,88 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modelit</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Modelit | Главная</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
 
-    <link rel="icon" type="image/png" sizes="32x32" href="static\pictures\mfavicon.ico?v=1">
-    <link rel="icon" type="image/png" sizes="16x16" href="static\pictures\mfavicon.ico?v=1">
-    <link rel="icon" type="image/x-icon" href="static\pictures\mfavicon.ico?v=1">
+        .top-header {
+            width: 100%;
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
 
+        #header-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .language-buttons {
+            margin-right: 40px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .language-buttons button {
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 5px 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        .language-buttons button:hover {
+            background-color: #272727;
+            color: #ffffff;
+            transform: scale(1.05);
+        }
+
+        .section {
+            font-size: 4rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .section:nth-child(odd) {
+            background-color: #181818;
+        }
+
+        .section:nth-child(even) {
+            background-color: #000000;
+        }
+
+        .section:first-child {
+            background: linear-gradient(-45deg, rgb(151, 5, 255), rgba(0,0,0,1), rgb(255, 0, 0));
+        }
+
+        .section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .section p, .section ul {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: #d1d1d1;
+            max-width: 800px;
+        }
+
+        .button {
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px 30px;
+            background-color: #ffffff;
+            color: #000000;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        .button:hover {
+            color: #ffffff;
+            background-color: #202020;
+            transform: scale(1.05);
+        }
+        
+        .button:hover svg {
+            fill: #ffffff;
+        }
+
+        .button svg {
+            width: 20px;
+            height: 20px;
+            fill: #141e30;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.9rem;
+            color: #aaaaaa;
+            background-color: rgb(0, 0, 0);
+        }
+    </style>
 </head>
 <body>
-    <div class="top-header" id="header-title">
-        <a href="{{ url_for('about') }}" style="text-decoration: none; color: inherit;">Modelit</a>
-    </div>
-
-    <div class="top-menu">
-        <div class="lang-select">
-            <a href="#" onclick="setLanguage('ru')">RU</a>
-            <a href="#" onclick="setLanguage('en')">EN</a>
+    <!-- Верхний блок с заголовком -->
+    <header class="top-header">
+        <h1 id="header-title">Modelit</h1>
+        <div class="language-buttons">
+            <button onclick="setLanguage('ru')">RU</button>
+            <button onclick="setLanguage('en')">EN</button>
         </div>
-        <a href="#" id="account-link" onclick="openModal()">Account</a>
-    </div>
+    </header>
 
-    <div class="search-bar" id="search-bar">
-        <input id="search-input" type="text" placeholder="Введите промпт..." />
-        <button id="generate-button" type="button"></button>
-    </div>
+    <!-- Главный заголовок -->
+    <section class="section">
+        <h1 id="main-title">Modelit</h1>
+        <p id="main-description">Сделай свою 3D модель легко и просто!</p>
+    </section>
 
-    <div class="idea-container">
-        <div class="idea">
-            <span id="idea-label">Идея:</span> 
-            <span id="idea-text">Красная сфера с радиусом 1</span>
-        </div>
-        <a href="{{ url_for('prompt_guide') }}" id="prompt-guide" class="prompt-guide">Гайд по промптам</a>
-    </div>
+    <!-- О проекте -->
+    <section class="section">
+        <h2 id="about-title">О Modelit</h2>
+        <p id="about-description">Modelit — это платформа для генерации и визуализации 3D-моделей. Мы предлагаем простые инструменты, которые помогут воплотить ваши идеи в реальность.</p>
+    </section>
 
-    <div id="error-message"></div>
+    <!-- Кнопка перехода на страницу генерации -->
+    <section class="section">
+        <h2 id="try-title">Опробуй Modelit</h2>
+        <a href="{{ url_for('main_page') }}" class="button" id="try-button">Перейти к генерации</a>
+    </section>
 
-    <div class="result-box" id="result-box">
-        <button id="download-button" onclick="downloadModel()"></button>
-        <div id="download-link" style="display:none; margin-top:10px;">
-            <a href="#" id="download-url" style="color:#6ab4ff;">Скачать 3D модель</a>
-        </div>
-    </div>
+    <!-- Контактная информация -->
+    <section class="section">
+        <h2 id="contact-title">Контакт с нами</h2>
+        <a href="https://github.com/PyanProject/modelit" target="_blank" class="button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.87 10.91.58.11.79-.25.79-.56v-2.07c-3.21.7-3.89-1.39-3.89-1.39-.52-1.31-1.28-1.66-1.28-1.66-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.67 1.25 3.32.96.1-.74.4-1.25.73-1.54-2.56-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.3 1.18-3.12-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11.01 11.01 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.73.82 1.18 1.86 1.18 3.12 0 4.42-2.72 5.39-5.3 5.67.41.35.77 1.05.77 2.11v3.12c0 .31.21.68.8.56A10.5 10.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/>
+            </svg>
+            GitHub
+        </a>
+    </section>
 
-    <div class="footer">&copy; Pyan Inc. 2024</div>
-    <div class="version-info">alpha v.1.4.1</div>
+    <!-- Футер -->
+    <footer class="footer">
+        &copy; Modelit, 2025
+    </footer>
 
-    <div class="modal-overlay" id="modal-overlay">
-        <div class="modal" id="auth-modal">
-            <h2 id="modal-title">Вход</h2>
-            <div id="login-form">
-                <input type="text" id="login-username" placeholder="Логин" />
-                <input type="password" id="login-password" placeholder="Пароль" />
-                <div class="options-row">
-                    <div class="remember">
-                        <input type="checkbox" id="remember-me" />
-                        <label for="remember-me" id="remember-label">Запомнить меня</label>
-                    </div>
-                    <div class="forgot-link">
-                        <a href="#" id="forgot-link">Забыли пароль?</a>
-                    </div>
-                </div>
-                <div class="actions">
-                    <button id="login-button">Войти</button>
-                    <button id="switch-to-register">Зарегистрироваться</button>
-                </div>
-            </div>
-            <div id="register-form" style="display:none;">
-                <input type="text" id="register-username" placeholder="Логин" />
-                <input type="password" id="register-password" placeholder="Пароль" />
-                <input type="password" id="register-password-confirm" placeholder="Повторите пароль" />
-                <input type="email" id="register-email" placeholder="Email" />
-                <div class="actions">
-                    <button id="register-button">Зарегистрироваться</button>
-                    <button id="switch-to-login">Назад</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <script>
+        const translations = {
+            ru: {
+                mainTitle: "Modelit",
+                mainDescription: "Сделай свою 3D модель легко и просто!",
+                aboutTitle: "О Modelit",
+                aboutDescription: "Modelit — это платформа для генерации и визуализации 3D-моделей. Мы предлагаем простые инструменты, которые помогут воплотить ваши идеи в реальность.",
+                tryTitle: "Опробуй Modelit",
+                tryButton: "Перейти к генерации",
+                contactTitle: "Контакт с нами"
+            },
+            en: {
+                mainTitle: "Modelit",
+                mainDescription: "Create your 3D model easily and quickly!",
+                aboutTitle: "About Modelit",
+                aboutDescription: "Modelit is a platform for generating and visualizing 3D models. We provide simple tools to bring your ideas to life.",
+                tryTitle: "Try Modelit",
+                tryButton: "Go to Generation",
+                contactTitle: "Contact Us"
+            }
+        };
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+        function setLanguage(lang) {
+            const t = translations[lang];
+            document.getElementById('main-title').textContent = t.mainTitle;
+            document.getElementById('main-description').textContent = t.mainDescription;
+            document.getElementById('about-title').textContent = t.aboutTitle;
+            document.getElementById('about-description').textContent = t.aboutDescription;
+            document.getElementById('try-title').textContent = t.tryTitle;
+            document.getElementById('try-button').textContent = t.tryButton;
+            document.getElementById('contact-title').textContent = t.contactTitle;
+        }
+    </script>
 </body>
 </html>

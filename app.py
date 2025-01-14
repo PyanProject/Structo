@@ -39,6 +39,10 @@ else:
 def index():
     return render_template('index.html')
 
+@app.route('/main_page')
+def main_page():
+    return render_template('main_page.html')
+
 @app.route('/generate', methods=['POST'])
 def generate():
     data = request.json
