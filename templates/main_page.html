@@ -49,38 +49,232 @@
     <div class="footer">&copy; Pyan Inc. 2025</div>
     <div class="version-info">alpha v.1.4.1</div>
 
-    <div class="modal-overlay" id="modal-overlay">
-        <div class="modal" id="auth-modal">
-            <h2 id="modal-title">Вход</h2>
-            <div id="login-form">
-                <input type="text" id="login-username" placeholder="Логин" />
-                <input type="password" id="login-password" placeholder="Пароль" />
-                <div class="options-row">
-                    <div class="remember">
-                        <input type="checkbox" id="remember-me" />
-                        <label for="remember-me" id="remember-label">Запомнить меня</label>
-                    </div>
-                    <div class="forgot-link">
-                        <a href="#" id="forgot-link">Забыли пароль?</a>
-                    </div>
+
+
+
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="auth-modal">
+        <h2 id="modal-title">Вход</h2>
+        
+        <!-- Форма логина -->
+        <div id="login-form">
+            <input type="text" id="login-username" placeholder="Логин" />
+            <input type="password" id="login-password" placeholder="Пароль" />
+            <div class="options-row">
+                <div class="remember">
+                    <input type="checkbox" id="remember-me" />
+                    <label for="remember-me" id="remember-label">Запомнить меня</label>
                 </div>
-                <div class="actions">
-                    <button id="login-button">Войти</button>
-                    <button id="switch-to-register">Зарегистрироваться</button>
+                <div class="forgot-link">
+                    <a href="#" id="forgot-link">Забыли пароль?</a>
                 </div>
             </div>
-            <div id="register-form" style="display:none;">
-                <input type="text" id="register-username" placeholder="Логин" />
-                <input type="password" id="register-password" placeholder="Пароль" />
-                <input type="password" id="register-password-confirm" placeholder="Повторите пароль" />
-                <input type="email" id="register-email" placeholder="Email" />
-                <div class="actions">
-                    <button id="register-button">Зарегистрироваться</button>
-                    <button id="switch-to-login">Назад</button>
-                </div>
+            <div class="actions">
+                <button id="login-button" onclick="submitLogin()">Войти</button>
+                <button id="switch-to-register" onclick="switchToRegister()">Зарегистрироваться</button>
+            </div>
+        </div>
+
+        <!-- Форма регистрации -->
+        <div id="register-form" style="display:none;">
+            <input type="text" id="register-username" placeholder="Логин" />
+            <input type="password" id="register-password" placeholder="Пароль" />
+            <input type="password" id="register-password-confirm" placeholder="Повторите пароль" />
+            <input type="email" id="register-email" placeholder="Email" />
+            <div class="actions">
+                <button id="register-button" onclick="submitRegister()">Зарегистрироваться</button>
+                <button id="switch-to-login" onclick="switchToLogin()">Назад</button>
             </div>
         </div>
     </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+    fetch('/auth_status')
+        .then(response => response.json())
+        .then(data => {
+            const accountLink = document.getElementById('account-link');
+            if (data.authenticated) {
+                accountLink.textContent = `${data.username}`;
+                accountLink.onclick = () => {
+                    fetch('/logout')
+                        .then(response => response.json())
+                        .then(() => {
+                            alert('Вы вышли из системы');
+                            location.reload(); // Перезагрузка страницы
+                        })
+                        .catch(error => console.error('Ошибка при выходе:', error));
+                };
+            } else {
+                accountLink.textContent = 'Аккаунт';
+                accountLink.onclick = openModal;
+            }
+        })
+        .catch(error => console.error('Ошибка проверки авторизации:', error));
+});
+
+    // Переключение на форму регистрации
+    function switchToRegister() {
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('register-form').style.display = 'block';
+        document.getElementById('modal-title').innerText = 'Регистрация';
+    }
+
+    // Переключение на форму логина
+    function switchToLogin() {
+        document.getElementById('register-form').style.display = 'none';
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('modal-title').innerText = 'Вход';
+    }
+
+
+    // Функция для обновления интерфейса после логина
+    function updateUserUI(username) {
+        const accountLink = document.getElementById('account-link');
+        accountLink.textContent = username;
+        accountLink.onclick = toggleUserMenu;
+        accountLink.style.position = 'relative';
+
+        // Создаем выпадающее меню
+        let userMenu = document.getElementById('user-menu');
+        if (!userMenu) {
+            userMenu = document.createElement('div');
+            userMenu.id = 'user-menu';
+            userMenu.style.display = 'none';
+            userMenu.style.position = 'absolute';
+            userMenu.style.background = '#333';
+            userMenu.style.boxShadow = '0px 4px 8px rgba(0,0,0,0.1)';
+            userMenu.style.borderRadius = '8px';
+            userMenu.style.padding = '10px';
+            userMenu.style.zIndex = '1000';
+
+
+
+            userMenu.innerHTML = `
+                <button id="profile-button" style="absolute;border-radius: 10%;border: none; width: 100%;background: rgba(255, 255, 255, 0.1);cursor: pointer; margin-bottom: 5px;">Личный кабинет</button>
+                <button id= "logout-button" style="absolute;border-radius: 10%;border: none; width: 100%;background: rgba(255, 255, 255, 0.1);cursor: pointer;                    ">Выйти</button>
+            `;
+            document.body.appendChild(userMenu);
+
+            // Кнопка выхода
+            document.getElementById('logout-button').onclick = () => {
+                fetch('/logout')
+                    .then(() => {
+                        alert('Вы вышли из системы');
+                        location.reload();
+                    })
+                    .catch(error => console.error('Ошибка при выходе:', error));
+            };
+
+            // Кнопка "Личный кабинет"
+            document.getElementById('profile-button').onclick = () => {
+                alert('Добро пожаловать в личный кабинет!'); // Здесь можно добавить переход на страницу профиля
+            };
+        }
+    }
+
+    // Переключение видимости меню пользователя
+    function toggleUserMenu() {
+        const userMenu = document.getElementById('user-menu');
+        const accountLink = document.getElementById('account-link');
+        if (userMenu.style.display === 'none') {
+            const rect = accountLink.getBoundingClientRect();
+
+            userMenu.style.left = `${rect.left}px`; // Устанавливаем координаты относительно кнопки
+            userMenu.style.top = `${rect.bottom}px`; // Учитываем прокрутку страницы
+            userMenu.style.display = 'block';
+        } else {
+            userMenu.style.display = 'none';
+        }
+    }
+
+
+    // Обновляем UI после логина
+    function submitLogin() {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+
+        fetch('/auth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'login',
+                username: username,
+                password: password,
+            }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Вы успешно вошли');
+                    updateUserUI(username); // Обновляем интерфейс
+                    document.getElementById('modal-overlay').style.display = 'none'; // Закрываем модальное окно
+                } else {
+                    alert('Неверный логин или пароль');
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
+    }
+
+
+    // После регистрации автоматически логиним пользователя
+    function submitRegister() {
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        const passwordConfirm = document.getElementById('register-password-confirm').value;
+        const email = document.getElementById('register-email').value;
+
+        if (password !== passwordConfirm) {
+            alert('Пароли не совпадают');
+            return;
+        }
+
+        fetch('/auth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'register',
+                username: username,
+                password: password,
+                email: email,
+            }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Регистрация успешна');
+                    // После успешной регистрации логиним пользователя
+                    submitLogin();
+                } else {
+                    alert(data.message || 'Ошибка регистрации');
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
+    }
+
+    function setLanguage(lang) {
+    fetch('/set_language', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang }),
+    })
+        .then(() => {
+            location.reload(); // Перезагрузите страницу для обновления языка
+        })
+        .catch(error => console.error('Ошибка при установке языка:', error));
+    }
+
+
+</script>
+
+
+
+
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
