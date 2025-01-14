@@ -67,6 +67,11 @@ def download_file(filename):
         return jsonify({'error': 'Файл не найден.'}), 404
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True, mimetype='application/octet-stream')
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
 
 @app.route('/prompt_guide')
 def prompt_guide():
@@ -90,8 +95,8 @@ class User(db.Model):
     password = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
 
-@app.route('/')
-def index():
+@app.route('/try-title')
+def main_page():
     return render_template('main_page.html')
 
 
