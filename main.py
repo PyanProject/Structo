@@ -14,18 +14,16 @@ def main():
 
     embedding_generator = EmbeddingGenerator(device, reduced_dim=512)
 
-    dataset_generator = ModelNet40Dataset(root_dir="datasets\ModelNet40", split="train")
-    samples = dataset_generator.generate_dataset()
-    dataset = ModelNet40Dataset(root_dir="datasets\ModelNet40", split="train")
+    dataset_generator = ModelNet40Dataset(root_dir="datasets/ModelNet40", split="train")
     dataloader = dataset_generator.generate_dataset()
-    
-    input_dim = 512
+
+    input_dim = 100
     output_dim = 3072
-    generator = Generator(input_dim=input_dim, output_dim=output_dim).to(device)
-    discriminator = Discriminator(input_dim=output_dim).to(device)
+    generator = Generator(noise_dim=input_dim, embedding_dim=512, output_dim=output_dim).to(device)
+    discriminator = Discriminator(data_dim=3072, embedding_dim=512).to(device)
 
     print("[MAIN] Начинаем тренировку GAN...")
-    train_gan(generator, discriminator, dataloader, epochs=10, lr=0.0002, device=device)
+    train_gan(generator, discriminator, dataloader, embedding_generator, epochs=10, lr=0.0002, device=device)
 
     torch.save(generator.state_dict(), 'generator.pth')
     torch.save(discriminator.state_dict(), 'discriminator.pth')
@@ -33,14 +31,20 @@ def main():
 
     text = input("[MAIN] Введите текст для создания эмбеддинга и 3D сцены: ")
     print(f"[MAIN] Введенный текст: {text}")
-    embedding = embedding_generator.generate_embedding(text)
-    print(f"[MAIN] Генерация эмбеддинга завершена. Размерность: {embedding.shape}")
+    embedding = embedding_generator.generate_embedding(text).to(device)
+    #embedding = embedding.squeeze()
+    embedding = embedding_generator.generate_embedding(text).to(device)
+    if embedding.dim() == 1:
+        embedding = embedding.unsqueeze(0)
 
     with torch.no_grad():
-        noise = torch.randn(1, input_dim).to(device)
-        generated_embedding = generator(noise).cpu().numpy().squeeze()
+        noise = torch.randn(1, generator.noise_dim).to(device)
+        # Verify dimensions before passing to generator
+        print(f"Noise shape: {noise.shape}")
+        print(f"Embedding shape: {embedding.shape}")
+        generated_data = generator(noise, embedding).cpu().numpy().squeeze()
 
-    scene_filename = generate_3d_scene_from_embedding(generated_embedding, text)
+    scene_filename = generate_3d_scene_from_embedding(generated_data, text)
     print(f"[MAIN] 3D модель сохранена в файл: {scene_filename}")
 
     print("[MAIN] Открываем 3D модель для визуализации с помощью Open3D...")

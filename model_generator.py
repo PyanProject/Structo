@@ -2,6 +2,8 @@ import numpy as np
 import trimesh
 import os
 import hashlib
+from embedding_generator import EnsureScalar
+
 
 def generate_unique_filename(text: str, output_dir: str) -> str:
     hash_object = hashlib.md5(text.encode())
@@ -193,13 +195,34 @@ def generate_3d_scene_from_embedding(embedding: np.ndarray, text: str, output_di
     print("[MODEL GEN] Генерация сцены...")
     shape, color, requested_size = extract_color_and_shape(text)
 
+    print(f"Embedding shape: {embedding.shape}")
+    print(f"Embedding type: {type(embedding)}")
+
     embedding_normalized = (embedding - embedding.mean()) / (embedding.std() + 1e-8)
-    shape_param = embedding_normalized[0]
-    size_param = embedding_normalized[1]
+    print(f"Embedding normalized shape: {embedding_normalized.shape}")
+
+    shape_param = embedding_normalized[0, 0]
+    size_param = embedding_normalized[0, 1]
+
+    print(f"Shape param: {shape_param}, type: {type(shape_param)}")
+    print(f"Size param: {size_param}, type: {type(size_param)}")
 
     shape_param = normalize(shape_param, -1, 1)
     final_size = np.clip((requested_size + size_param), 0.5, 5.0)
+    
+    print(f"Final size before conversion: {final_size}, type: {type(final_size)}")
+
+    final_size = float(final_size)
+    print(f"Final size after conversion: {final_size}, type: {type(final_size)}")
+    
+    final_size = EnsureScalar(final_size)
     final_color = np.array(color)
+
+    if final_size <= 0:
+        raise ValueError("final_size must be a positive number.")
+
+    # Create the mesh with the scalar final_size
+    mesh = trimesh.creation.icosphere(radius=final_size)
 
     if shape == "sphere":
         mesh = trimesh.creation.icosphere(radius=final_size)

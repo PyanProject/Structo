@@ -8,6 +8,16 @@ import spacy
 from langdetect import detect
 from spellchecker import SpellChecker
 
+def EnsureScalar(value):
+    if isinstance(value, np.ndarray):
+        if value.size != 1:
+            raise ValueError("Value must be a scalar.")
+        return value.item()
+    elif isinstance(value, (int, float)):
+        return value
+    else:
+        raise TypeError("Value must be a scalar number.")
+
 class EmbeddingGenerator:
     def __init__(self, device: torch.device, reduced_dim: int = 512):
         self.device = device
@@ -81,6 +91,7 @@ class EmbeddingGenerator:
             highlighted_text = highlighted_text.replace(keyword, f"[{keyword}]")
 
         return highlighted_text, keywords
+
     
     def generate_embedding(self, text: str, additional_info: str = "", shape_info: dict = None) -> torch.Tensor:
         combined_text = self.combine_text(text, additional_info, shape_info)
