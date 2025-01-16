@@ -1,5 +1,6 @@
 venv/
 modelit/venv
+ModelNet40/
 
 models/*
 !models/.gitkeep

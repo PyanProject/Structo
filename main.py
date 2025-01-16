@@ -1,7 +1,7 @@
 import torch
 from embedding_generator import EmbeddingGenerator
 from model_generator import generate_3d_scene_from_embedding
-from dataset import CustomDataset, Temporary3DDataset
+from dataset import ModelNet40Dataset
 from gan_model import Generator, Discriminator, train_gan
 from torch.utils.data import DataLoader
 import numpy as np
@@ -14,13 +14,13 @@ def main():
 
     embedding_generator = EmbeddingGenerator(device, reduced_dim=512)
 
-    dataset_generator = CustomDataset()
+    dataset_generator = ModelNet40Dataset(root_dir="datasets\ModelNet40", split="train")
     samples = dataset_generator.generate_dataset()
-    dataset = Temporary3DDataset(samples, embedding_generator)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    dataset = ModelNet40Dataset(root_dir="datasets\ModelNet40", split="train")
+    dataloader = dataset_generator.generate_dataset()
     
     input_dim = 512
-    output_dim = 512
+    output_dim = 3072
     generator = Generator(input_dim=input_dim, output_dim=output_dim).to(device)
     discriminator = Discriminator(input_dim=output_dim).to(device)
 

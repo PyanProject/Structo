@@ -2,26 +2,29 @@ import torch
 import torch.nn as nn
 
 class Generator(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim=100, output_dim=3072):
         super(Generator, self).__init__()
         self.input_dim = input_dim
+
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 1024),
-            nn.ReLU(),
+            nn.Linear(input_dim, 1024),  
+            nn.LeakyReLU(0.2),
             nn.Linear(1024, 2048),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(2048, output_dim),
             nn.Tanh()
         )
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, z):
+        x = self.model(z)
+        return x.view(-1, 1024, 3)  # Превращаем в (batch_size, 1024, 3)
 
 class Discriminator(nn.Module):
     def __init__(self, input_dim):
         super(Discriminator, self).__init__()
+
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 2048),
+            nn.Linear(3072, 2048),  # Исправлено с 512 на 3072
             nn.LeakyReLU(0.2),
             nn.Linear(2048, 1024),
             nn.LeakyReLU(0.2),
@@ -30,6 +33,7 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x):
+        x = x.view(x.size(0), -1)
         return self.model(x)
 
 def train_gan(generator, discriminator, dataloader, epochs, lr, device):
@@ -45,7 +49,7 @@ def train_gan(generator, discriminator, dataloader, epochs, lr, device):
         total_loss_G = 0.0
         batches = 0
 
-        for real_data, _ in dataloader:
+        for real_data in dataloader:
             real_data = real_data.to(device)
             batch_size = real_data.size(0)
 
@@ -53,6 +57,7 @@ def train_gan(generator, discriminator, dataloader, epochs, lr, device):
             fake_labels = torch.zeros((batch_size, 1)).to(device)
 
             optimizer_D.zero_grad()
+            #print(f"Форма real_data: {real_data.shape}")
             real_preds = discriminator(real_data)
             loss_real = criterion(real_preds, real_labels)
 
