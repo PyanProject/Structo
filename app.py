@@ -5,6 +5,7 @@ from embedding_generator import EmbeddingGenerator
 from model_generator import generate_3d_scene_from_embedding
 from gan_model import Generator, Discriminator
 import numpy as np
+from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
@@ -41,6 +42,10 @@ else:
 
 @app.route('/generate', methods=['POST'])
 def generate():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Вы должны быть авторизованы для генерации моделей.'}), 403
+
     data = request.json
     text = data.get('text', '')
     if not text:
@@ -62,9 +67,19 @@ def generate():
 
 @app.route('/downloads/<filename>')
 def download_file(filename):
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Вы должны быть авторизованы для скачивания файлов.'}), 403
+
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if not os.path.exists(file_path):
         return jsonify({'error': 'Файл не найден.'}), 404
+
+    # Сохранение информации о скачанном файле в базу данных
+    downloaded_file = DownloadedFile(user_id=user_id, filename=filename)
+    db.session.add(downloaded_file)
+    db.session.commit()
+
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True, mimetype='application/octet-stream')
 
 @app.route('/')
@@ -86,6 +101,7 @@ def about():
 # Настройка базы данных SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 1 day in seconds
 db = SQLAlchemy(app)
 
 # Модель пользователя
@@ -94,6 +110,13 @@ class User(db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
+
+# Модель загруженного файла
+class DownloadedFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    filename = db.Column(db.String(150), nullable=False)
+    download_time = db.Column(db.DateTime, default=datetime.utcnow)
 
 @app.route('/try-title')
 def main_page():
@@ -118,12 +141,16 @@ def auth():
     if action == 'login':
         username = data.get('username')
         password = data.get('password')
+        remember_me = data.get('remember_me', False)
 
         # Исправленный запрос для поиска пользователя по имени
         user = User.query.filter_by(username=username).first()
 
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
+            session.permanent = remember_me  # Set session to be permanent if "Remember me" is checked
+            if not remember_me:
+                session.permanent = False  # Ensure session is non-permanent if "Remember me" is not checked
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'message': 'Неверный логин или пароль'}), 401
