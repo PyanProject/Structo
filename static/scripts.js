@@ -328,3 +328,33 @@ window.onload = function() {
     );
   }
 };
+
+function submitLogin() {
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    const rememberMe = document.getElementById('remember-me').checked;
+
+    fetch('/auth', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'login',
+            username: username,
+            password: password,
+            remember_me: rememberMe,
+        }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Вы успешно вошли');
+                updateUserUI(username); // Обновляем интерфейс
+                document.getElementById('modal-overlay').style.display = 'none'; // Закрываем модальное окно
+            } else {
+                alert('Неверный логин или пароль');
+            }
+        })
+        .catch(error => console.error('Ошибка:', error));
+}
