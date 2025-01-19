@@ -1,3 +1,9 @@
+'''
+файл базы данных
+
+'''
+
+
 import sqlite3
 
 conn = sqlite3.connect('instance/users.db')

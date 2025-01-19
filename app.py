@@ -1,3 +1,9 @@
+'''
+файл бэкэнд-части сайта
+
+'''
+
+
 from flask import Flask, request, render_template, send_from_directory, redirect, url_for, jsonify
 import os
 import torch
@@ -40,6 +46,7 @@ if os.path.exists(generator_path) and os.path.exists(discriminator_path):
 else:
     print("Модели GAN не найдены. Убедитесь, что 'generator.pth' и 'discriminator.pth' существуют.")
 
+# блок самого сайта
 @app.route('/generate', methods=['POST'])
 def generate():
     user_id = session.get('user_id')

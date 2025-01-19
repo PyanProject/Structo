@@ -1,3 +1,9 @@
+'''
+этот файл подгружает датасет для дальнейшей работы йоу
+
+'''
+
+
 import os
 import torch
 import torchvision.transforms as transforms

@@ -1,15 +1,22 @@
+'''
+этот файл раньше помогал дегенерировать простые модели, а сейчас его нужно переделать под датасет
+
+'''
+
+
 import numpy as np
 import trimesh
 import os
 import hashlib
 from embedding_generator import EnsureScalar
 
-
+# при генерации модели она сохраняется и ей присваивается уникальное имя. очень важная ф-ция
 def generate_unique_filename(text: str, output_dir: str) -> str:
     hash_object = hashlib.md5(text.encode())
     filename = f"model_{hash_object.hexdigest()[:8]}.ply"
     return os.path.join(output_dir, filename)
 
+# не дает файлам переполниться, ф-ция-мусорщик
 def manage_model_files(output_dir: str, max_files: int = 10):
     os.makedirs(output_dir, exist_ok=True)
     files = [f for f in os.listdir(output_dir) if f.endswith('.ply')]
@@ -21,6 +28,7 @@ def manage_model_files(output_dir: str, max_files: int = 10):
 def normalize(value, min_val, max_val):
     return (value - min_val) / (max_val - min_val)
 
+# срал
 def create_pyramid(extents=[1.0, 1.0, 2.0]):
     width, depth, height = extents
     vertices = np.array([
