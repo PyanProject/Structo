@@ -33,7 +33,7 @@ def generate_3d_scene_from_embedding(generated_data: np.ndarray, text: str, outp
     pcd.points = o3d.utility.Vector3dVector(generated_data)
     
     # Downsample the point cloud
-    pcd = pcd.voxel_down_sample(voxel_size=0.05)
+    pcd = pcd.voxel_down_sample(voxel_size=0.02)
     
     # Estimate normals
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=20))

@@ -29,7 +29,9 @@ class ModelNet40Dataset(Dataset):
     def __getitem__(self, idx):
         file_path = os.path.join(self.root_dir, self.file_list[idx])
         point_cloud = self._load_mesh(file_path)
-        
+        point_cloud = torch.tensor(point_cloud, dtype=torch.float32).flatten()  
+        return point_cloud
+
         if self.transform:
             point_cloud = self.transform(point_cloud)
         

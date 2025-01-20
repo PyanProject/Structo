@@ -15,7 +15,7 @@ def main():
     embedding_generator = EmbeddingGenerator(device, reduced_dim=512)
 
     dataset_generator = ModelNet40Dataset(root_dir="datasets/ModelNet40", split="train")
-    dataloader = dataset_generator.generate_dataset()
+    dataloader = DataLoader(dataset_generator.generate_dataset(), batch_size=32, shuffle=True)
 
     input_dim = 100
     output_dim = 3072
@@ -24,6 +24,12 @@ def main():
 
     print("[MAIN] Начинаем тренировку GAN...")
     train_gan(generator, discriminator, dataloader, embedding_generator, epochs=1, lr=0.0002, device=device)
+
+    try:
+        torch.save(generator.state_dict(), 'generator.pth')
+        print("[MAIN] Модель генератора успешно сохранена в 'generator.pth'")
+    except Exception as e:
+        print(f"[ERROR] Не удалось сохранить модель генератора: {e}")
 
     torch.save(generator.state_dict(), 'generator.pth')
     torch.save(discriminator.state_dict(), 'discriminator.pth')
@@ -42,7 +48,7 @@ def main():
         # Verify dimensions before passing to generator
         print(f"Noise shape: {noise.shape}")
         print(f"Embedding shape: {embedding.shape}")
-        generated_data = generator(noise, embedding).cpu().numpy().squeeze()
+        generated_data = generator(noise, embedding).cpu().numpy().reshape(-1, 3)
 
     scene_filename = generate_3d_scene_from_embedding(generated_data, text)
     print(f"[MAIN] 3D модель сохранена в файл: {scene_filename}")

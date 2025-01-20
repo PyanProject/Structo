@@ -94,7 +94,7 @@ class EmbeddingGenerator:
 
     
     def generate_embedding(self, text: str, additional_info: str = "", shape_info: dict = None) -> torch.Tensor:
-        combined_text = self.combine_text(text, additional_info, shape_info)
+        combined_text = f"A 3D Model of {text}"
         print(f"[EMBED] Генерация эмбеддинга для текста: '{combined_text}'")
         text_input = clip.tokenize([combined_text]).to(self.device)
         
@@ -109,7 +109,6 @@ class EmbeddingGenerator:
         print(f"[EMBED] Эмбеддинг CLIP сгенерирован. Размерность: {text_features.shape}")
         
 
-        text_features = self.model.encode_text(text_input)
         text_features = text_features.squeeze()
         if hasattr(self, 'reduce_dim_layer'):
             text_features = self.reduce_dim_layer(text_features)

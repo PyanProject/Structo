@@ -23,7 +23,7 @@ class Generator(nn.Module):
             embedding = embedding.unsqueeze(0)
         combined_input = torch.cat((noise, embedding), dim=1)
         x = self.model(combined_input)
-        return x.view(-1, 1024, 3)
+        return x.view(-1, 3072)
 
 
 class Discriminator(nn.Module):
