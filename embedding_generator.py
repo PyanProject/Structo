@@ -101,8 +101,16 @@ class EmbeddingGenerator:
         with torch.no_grad():
             text_features = self.model.encode_text(text_input)
         
+        if hasattr(self, 'reduce_dim_layer'):
+            text_features = self.reduce_dim_layer(text_features)
+
+        text_features = text_features.squeeze(0)
+        
         print(f"[EMBED] Эмбеддинг CLIP сгенерирован. Размерность: {text_features.shape}")
         
+
+        text_features = self.model.encode_text(text_input)
+        text_features = text_features.squeeze()
         if hasattr(self, 'reduce_dim_layer'):
             text_features = self.reduce_dim_layer(text_features)
             print(f"[EMBED] Размерность эмбеддинга уменьшена до {text_features.shape[1]}.")
@@ -144,7 +152,7 @@ class EmbeddingGenerator:
         print(f"[EMBED] Сохранение эмбеддинга в файл: {filepath}")
 
         try:
-            np.save(filepath, embedding.cpu().numpy())
+            np.save(filepath, embedding.detach().cpu().numpy())
             print(f"[EMBED] Эмбеддинг успешно сохранён: {filepath}")
         except Exception as e:
             print(f"[EMBED] Ошибка при сохранении файла: {e}")

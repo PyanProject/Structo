@@ -17,21 +17,21 @@ class Generator(nn.Module):
         )
 
     def forward(self, noise, embedding):
-        # Ensure embedding is 2D
-        if embedding.dim() == 1:
-            embedding = embedding.unsqueeze(0)
-        # Ensure noise is 2D
         if noise.dim() == 1:
             noise = noise.unsqueeze(0)
+        if embedding.dim() == 1:
+            embedding = embedding.unsqueeze(0)
         combined_input = torch.cat((noise, embedding), dim=1)
         x = self.model(combined_input)
         return x.view(-1, 1024, 3)
 
+
 class Discriminator(nn.Module):
     def __init__(self, data_dim, embedding_dim=512):
         super(Discriminator, self).__init__()
         self.data_dim = data_dim
         self.embedding_dim = embedding_dim
+
 
         self.model = nn.Sequential(
             nn.Linear(data_dim + embedding_dim, 2048),
@@ -45,26 +45,6 @@ class Discriminator(nn.Module):
     def forward(self, data, embedding):
         combined_input = torch.cat((data.view(data.size(0), -1), embedding), dim=1)
         return self.model(combined_input)
-
-class Discriminator(nn.Module):
-    def __init__(self, data_dim, embedding_dim=512):
-        super(Discriminator, self).__init__()
-        self.data_dim = data_dim
-        self.embedding_dim = embedding_dim
-
-        self.model = nn.Sequential(
-            nn.Linear(data_dim + embedding_dim, 2048),
-            nn.LeakyReLU(0.2),
-            nn.Linear(2048, 1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, 1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, data, embedding):
-        combined_input = torch.cat((data.view(data.size(0), -1), embedding), dim=1)
-        return self.model(combined_input)
-
 def train_gan(generator, discriminator, dataloader, embedding_generator, epochs, lr, device):
     generator.train()
     discriminator.train()
@@ -104,7 +84,7 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
             loss_fake = criterion(fake_preds, fake_labels)
 
             loss_D = loss_real + loss_fake
-            loss_D.backward()
+            loss_D.backward(retain_graph=True)
             optimizer_D.step()
 
             optimizer_G.zero_grad()

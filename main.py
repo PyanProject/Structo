@@ -23,7 +23,7 @@ def main():
     discriminator = Discriminator(data_dim=3072, embedding_dim=512).to(device)
 
     print("[MAIN] Начинаем тренировку GAN...")
-    train_gan(generator, discriminator, dataloader, embedding_generator, epochs=10, lr=0.0002, device=device)
+    train_gan(generator, discriminator, dataloader, embedding_generator, epochs=1, lr=0.0002, device=device)
 
     torch.save(generator.state_dict(), 'generator.pth')
     torch.save(discriminator.state_dict(), 'discriminator.pth')
@@ -33,7 +33,7 @@ def main():
     print(f"[MAIN] Введенный текст: {text}")
     embedding = embedding_generator.generate_embedding(text).to(device)
     #embedding = embedding.squeeze()
-    embedding = embedding_generator.generate_embedding(text).to(device)
+    embedding = embedding_generator.generate_embedding(text).detach().to(device)
     if embedding.dim() == 1:
         embedding = embedding.unsqueeze(0)
 
