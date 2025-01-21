@@ -42,11 +42,16 @@ class EmbeddingGenerator:
 
         # если у вас возник вопрос что делает у нас в проекте спайс и почему лид от него еще не отошел,
         # то вот ответ - это библиотека для обработки текста, проще говоря NLP
-        self.models = {
-            "ru": spacy.load("ru_core_news_sm"),
-            "en": spacy.load("en_core_web_sm"),
-        }
-        print('[EMBED] Модели обработки текста spaCy загружены успешно :)')
+        try:
+            self.models = {
+                "ru": spacy.load("ru_core_news_sm"),
+                "en": spacy.load("en_core_web_sm"),
+            }
+            print('[EMBED] Модели обработки текста spaCy загружены успешно.')
+        except Exception as e:
+            print(f'[EMBED] Ошибка загрузки моделей spaCy: {e}')
+            print('Установите модели командой: `python -m spacy download ru_core_news_sm en_core_web_sm`')
+            raise
 
         # self.spell = SpellChecker() эта хуйня бесполезна, пока нет нового датасета
 
@@ -160,7 +165,7 @@ class EmbeddingGenerator:
         print(f"[EMBED] Сохранение эмбеддинга в файл: {filepath}")
 
         try:
-            np.save(filepath, embedding.cpu().numpy())
+            np.save(filepath, embedding.cpu().detach().numpy())
             print(f"[EMBED] Эмбеддинг успешно сохранён: {filepath}")
         except Exception as e:
             print(f"[EMBED] Ошибка при сохранении файла: {e}")
