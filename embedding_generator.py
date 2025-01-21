@@ -42,11 +42,16 @@ class EmbeddingGenerator:
 
         # если у вас возник вопрос что делает у нас в проекте спайс и почему лид от него еще не отошел,
         # то вот ответ - это библиотека для обработки текста, проще говоря NLP
-        self.models = {
-            "ru": spacy.load("ru_core_news_sm"),
-            "en": spacy.load("en_core_web_sm"),
-        }
-        print('[EMBED] Модели обработки текста spaCy загружены успешно :)')
+        try:
+            self.models = {
+                "ru": spacy.load("ru_core_news_sm"),
+                "en": spacy.load("en_core_web_sm"),
+            }
+            print('[EMBED] Модели обработки текста spaCy загружены успешно.')
+        except Exception as e:
+            print(f'[EMBED] Ошибка загрузки моделей spaCy: {e}')
+            print('Установите модели командой: `python -m spacy download ru_core_news_sm en_core_web_sm`')
+            raise
 
         # self.spell = SpellChecker() эта хуйня бесполезна, пока нет нового датасета
 
@@ -108,22 +113,15 @@ class EmbeddingGenerator:
     # это какие то вектора. я хз че за вектора ему мерещатся, я такую игру только знаю. Но он тут начальник,
     # так что это ф-ция преобразования обработанного текста в эмбеддинги
     def generate_embedding(self, text: str, additional_info: str = "", shape_info: dict = None) -> torch.Tensor:
-        combined_text = f"A 3D Model of {text}"
+        combined_text = self.combine_text(text, additional_info, shape_info)
         print(f"[EMBED] Генерация эмбеддинга для текста: '{combined_text}'")
         text_input = clip.tokenize([combined_text]).to(self.device)
         
         with torch.no_grad():
             text_features = self.model.encode_text(text_input)
         
-        if hasattr(self, 'reduce_dim_layer'):
-            text_features = self.reduce_dim_layer(text_features)
-
-        text_features = text_features.squeeze(0)
-        
         print(f"[EMBED] Эмбеддинг CLIP сгенерирован. Размерность: {text_features.shape}")
         
-
-        text_features = text_features.squeeze()
         if hasattr(self, 'reduce_dim_layer'):
             text_features = self.reduce_dim_layer(text_features)
             print(f"[EMBED] Размерность эмбеддинга уменьшена до {text_features.shape[1]}.")
@@ -167,7 +165,7 @@ class EmbeddingGenerator:
         print(f"[EMBED] Сохранение эмбеддинга в файл: {filepath}")
 
         try:
-            np.save(filepath, embedding.detach().cpu().numpy())
+            np.save(filepath, embedding.cpu().detach().numpy())
             print(f"[EMBED] Эмбеддинг успешно сохранён: {filepath}")
         except Exception as e:
             print(f"[EMBED] Ошибка при сохранении файла: {e}")
