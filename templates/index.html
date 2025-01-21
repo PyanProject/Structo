@@ -66,6 +66,23 @@
             height: 100vh;
             padding: 20px;
             box-sizing: border-box;
+            transform: translateY(0px);
+            transition: transform 1s ease-in-out;
+        }
+
+        .section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .section h2, .section p, .section ul {
+            transform: translateY(200px);
+            transition: transform 1s ease-in-out;
+        }
+
+        .section.visible h2, .section.visible p, .section.visible ul {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .section:nth-child(odd) {
@@ -209,6 +226,24 @@
             document.getElementById('try-button').textContent = t.tryButton;
             document.getElementById('contact-title').textContent = t.contactTitle;
         }
+
+        function handleScroll() {
+            const sections = document.querySelectorAll('.section');
+            const triggerBottom = window.innerHeight;
+
+            sections.forEach(section => {
+                const sectionTop = section.getBoundingClientRect().top;
+
+                if (sectionTop < triggerBottom) {
+                    section.classList.add('visible');
+                } else {
+                    section.classList.remove('visible');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('load', handleScroll);
     </script>
 </body>
 </html>
