@@ -1,3 +1,10 @@
+'''
+файл обработки входящего текста и создания на его основе эмбеддинга
+
+'''
+
+
+
 import clip
 import torch
 import numpy as np
@@ -8,6 +15,7 @@ import spacy
 from langdetect import detect
 from spellchecker import SpellChecker
 
+# это делал шорт, я хз
 def EnsureScalar(value):
     if isinstance(value, np.ndarray):
         if value.size != 1:
@@ -18,6 +26,7 @@ def EnsureScalar(value):
     else:
         raise TypeError("Value must be a scalar number.")
 
+# главный класс генератора, использующий предобученную модель CLIP
 class EmbeddingGenerator:
     def __init__(self, device: torch.device, reduced_dim: int = 512):
         self.device = device
@@ -31,6 +40,8 @@ class EmbeddingGenerator:
             self.reduce_dim_layer = nn.Linear(512, self.reduced_dim).to(self.device)
             print(f"[EMBED] Добавлен линейный слой для уменьшения размерности до {self.reduced_dim}.")
 
+        # если у вас возник вопрос что делает у нас в проекте спайс и почему лид от него еще не отошел,
+        # то вот ответ - это библиотека для обработки текста, проще говоря NLP
         self.models = {
             "ru": spacy.load("ru_core_news_sm"),
             "en": spacy.load("en_core_web_sm"),
@@ -63,7 +74,7 @@ class EmbeddingGenerator:
         это тоже собственно бесполезно без датасета
         
         '''
-
+    # две следующие ф-ции это непосредственно обработка текста
     def extract_keywords(self, text: str):
         lang = detect(text)
         print(f"[EMBED] Определён язык: {lang}")
@@ -93,6 +104,9 @@ class EmbeddingGenerator:
         return highlighted_text, keywords
 
     
+    # эта шайтан ф-ция на основе обработанного текста выдает какие-то цифры непонятные, тимлид говорит что
+    # это какие то вектора. я хз че за вектора ему мерещатся, я такую игру только знаю. Но он тут начальник,
+    # так что это ф-ция преобразования обработанного текста в эмбеддинги
     def generate_embedding(self, text: str, additional_info: str = "", shape_info: dict = None) -> torch.Tensor:
         combined_text = f"A 3D Model of {text}"
         print(f"[EMBED] Генерация эмбеддинга для текста: '{combined_text}'")
@@ -121,6 +135,7 @@ class EmbeddingGenerator:
             print("[EMBED] Ошибка при сохранении эмбеддинга.")
         return text_features
 
+    # скажи вайперр чтобы было больше просмотров, хуйня
     def combine_text(self, text: str, additional_info: str, shape_info: dict) -> str:
         combined_text = f"{text}. {additional_info}"
         if shape_info:
@@ -128,6 +143,7 @@ class EmbeddingGenerator:
             combined_text = f"{combined_text}. {shape_description}"
         return combined_text
 
+    # интересно, что же эта ф-ция может делать?
     def save_embedding(self, embedding: torch.Tensor, output_dir: str = "temp_emb", unique_filename: bool = True) -> str:
         if not os.path.exists(output_dir):
             print(f"[EMBED] Папка {output_dir} не существует, создаём её.")

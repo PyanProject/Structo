@@ -1,3 +1,10 @@
+'''
+главный файл модели - он отвечает за запуск обучения всей модели на основе GAN. В конце работы
+он выводит визуализацию 3D объекта на основе обученной модели для быстрой оценки результатов и
+дебага.
+
+'''
+
 import torch
 from embedding_generator import EmbeddingGenerator
 from model_generator import generate_3d_scene_from_embedding
@@ -8,8 +15,9 @@ import numpy as np
 import open3d as o3d
 import os
 
+
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # инициализация устройства
     print(f"[MAIN] Используемое устройство: {device}")
 
     embedding_generator = EmbeddingGenerator(device, reduced_dim=512)
