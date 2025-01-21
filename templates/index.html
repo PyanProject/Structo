@@ -56,34 +56,6 @@
             transform: scale(1.05);
         }
 
-        .section {
-            font-size: 4rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            height: 100vh;
-            padding: 20px;
-            box-sizing: border-box;
-            transform: translateY(0px);
-            transition: transform 1s ease-in-out;
-        }
-
-        .section.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .section h2, .section p, .section ul {
-            transform: translateY(200px);
-            transition: transform 1s ease-in-out;
-        }
-
-        .section.visible h2, .section.visible p, .section.visible ul {
-            opacity: 1;
-            transform: translateY(0);
-        }
 
         .section:nth-child(odd) {
             background-color: #181818;
@@ -147,6 +119,35 @@
             font-size: 0.9rem;
             color: #aaaaaa;
             background-color: rgb(0, 0, 0);
+        }
+
+        .section {
+            font-size: 4rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            transform: translateY(0px);
+            transition: transform 1s ease-in-out;
+        }
+
+        .section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .section h2, .section p, .section ul, .section .button{
+            transform: translateY(200px);
+            transition: transform 1s ease-in-out;
+        }
+
+        .section.visible h2, .section.visible p, .section.visible ul, .section.visible .button {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
