@@ -13,8 +13,9 @@
 </head>
 <body>
     <div class="top-header" id="header-title">
-        <a href="{{ url_for('about') }}" style="text-decoration: none; color: inherit;">Modelit</a>
+        <a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">Modelit</a>
     </div>
+    
 
     <div class="top-menu">
         <div class="lang-select">
@@ -87,48 +88,6 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        // Проверяем, была ли страница перезагружена
-        const pageReloaded = performance.navigation.type === 1;
-
-        if (pageReloaded) {
-            const rememberMe = sessionStorage.getItem('loggedIn') === 'true';
-
-            // Если опция "Запомнить меня" не выбрана
-            if (!rememberMe) {
-                // Удаляем ключ из sessionStorage перед запросом
-                sessionStorage.removeItem('loggedIn');
-
-                try {
-                    // Завершаем сессию на сервере
-                    const response = await fetch('/logout', { method: 'GET' });
-                    if (response.ok) {
-                        console.log('Вы разлогинены после обновления страницы.');
-                    } else {
-                        console.error('Ошибка разлогинивания на сервере.');
-                    }
-                } catch (error) {
-                    console.error('Ошибка при выходе:', error);
-                }
-            }
-        }
-
-        // Проверяем статус авторизации на сервере
-        try {
-            const response = await fetch('/auth_status');
-            const data = await response.json();
-
-            const accountLink = document.getElementById('account-link');
-            if (data.authenticated) {
-                updateUserUI(data.username);
-            } else {
-                accountLink.textContent = 'Аккаунт';
-                accountLink.onclick = openModal;
-            }
-        } catch (error) {
-            console.error('Ошибка проверки авторизации:', error);
-        }
-    });
     // Переключение на форму регистрации
     function switchToRegister() {
         document.getElementById('login-form').style.display = 'none';
@@ -253,20 +212,46 @@
             .then(data => {
                 if (data.success) {
                     alert('Вы успешно вошли');
-                    updateUserUI(username); // Обновляем интерфейс
-                    document.getElementById('modal-overlay').style.display = 'none'; // Закрываем модальное окно
-                    if (!rememberMe) {
-                        sessionStorage.setItem('loggedIn', 'true');
+                    updateUserUI(username);
+
+                    if (rememberMe) {
+                        sessionStorage.setItem('remembered', 'true'); // Сохраняем, если "Запомнить меня" выбрано
                     } else {
-                        sessionStorage.removeItem('loggedIn');
+                        sessionStorage.setItem('loggedIn', 'true'); // Для временной сессии
                     }
                 } else {
                     alert('Неверный логин или пароль');
                 }
             })
-            .catch(error => console.error('Ошибка:', error));
+            .catch(error => console.error('Ошибка авторизации:', error));
     }
 
+    document.addEventListener('DOMContentLoaded', async () => {
+        const pageReloaded = performance.navigation.type === 1;
+        const remembered = sessionStorage.getItem('remembered') === 'true';
+
+        if (!remembered) {
+            console.log('[DEBUG] Пользователь не выбрал "Запомнить меня". Проверяем временную сессию.');
+        }
+
+        // Проверяем статус авторизации на сервере
+        try {
+            const response = await fetch('/auth_status');
+            const data = await response.json();
+
+            const accountLink = document.getElementById('account-link');
+            if (data.authenticated) {
+                console.log('[DEBUG] Пользователь авторизован на сервере.');
+                updateUserUI(data.username);
+            } else {
+                console.log('[DEBUG] Пользователь не авторизован на сервере.');
+                accountLink.textContent = 'Аккаунт';
+                accountLink.onclick = openModal;
+            }
+        } catch (error) {
+            console.error('Ошибка проверки авторизации:', error);
+        }
+    });
 
     // После регистрации автоматически логиним пользователя
     function submitRegister() {
@@ -311,13 +296,24 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lang }),
     })
-        .then(() => {
-            location.reload(); // Перезагрузите страницу для обновления языка
-        })
-        .catch(error => console.error('Ошибка при установке языка:', error));
-    }
-
-
+    .then(() => {
+        // После смены языка проверяем статус авторизации
+        return fetch('/auth_status');
+    })
+    .then(response => response.json())
+    .then(data => {
+        const accountLink = document.getElementById('account-link');
+        if (data.authenticated) {
+            // Если пользователь авторизован, обновляем интерфейс
+            updateUserUI(data.username);
+        } else {
+            // Если пользователь не авторизован, отображаем "Аккаунт"
+            accountLink.textContent = 'Аккаунт';
+            accountLink.onclick = openModal;
+        }
+    })
+    .catch(error => console.error('Ошибка при смене языка или проверке авторизации:', error));
+}
 </script>
 
 

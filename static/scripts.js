@@ -65,7 +65,7 @@ let currentLang = 'ru';
 function setLanguage(lang) {
   currentLang = lang;
   const t = texts[lang];
-  document.getElementById('header-title').textContent = t.headerTitle;
+  document.getElementById('header-title a').textContent = t.headerTitle;
   document.getElementById('account-link').textContent = t.account;
   document.getElementById('search-input').placeholder = t.placeholder;
   document.getElementById('idea-label').textContent = t.ideaLabel;
@@ -88,6 +88,21 @@ function setLanguage(lang) {
   document.getElementById('register-email').placeholder = t.regPlaceholderEmail;
   document.getElementById('register-button').textContent = t.registerDo;
   document.getElementById('switch-to-login').textContent = t.registerBack;
+
+  // Проверяем статус авторизации
+  fetch('/auth_status')
+  .then(response => response.json())
+  .then(data => {
+      const accountLink = document.getElementById('account-link');
+      if (data.authenticated) {
+          accountLink.textContent = data.username; // Если пользователь авторизован, показываем имя
+          accountLink.onclick = toggleUserMenu; // Привязываем меню пользователя
+      } else {
+          accountLink.textContent = t.account; // Если не авторизован, показываем "Аккаунт"
+          accountLink.onclick = openModal; // Привязываем модальное окно
+      }
+  })
+  .catch(error => console.error('Ошибка проверки авторизации:', error));
 }
 
 function openModal() {

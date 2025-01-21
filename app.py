@@ -11,7 +11,7 @@ from embedding_generator import EmbeddingGenerator
 from model_generator import generate_3d_scene_from_embedding
 from gan_model import Generator, Discriminator
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
@@ -108,7 +108,8 @@ def about():
 # Настройка базы данных SQLite
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SECRET_KEY'] = 'your_secret_key_here'
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 1 day in seconds
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30) 
+app.config['SESSION_COOKIE_DURATION'] = timedelta(days=30)  # Куки хранятся 30 дней
 db = SQLAlchemy(app)
 
 # Модель пользователя
@@ -125,7 +126,7 @@ class DownloadedFile(db.Model):
     filename = db.Column(db.String(150), nullable=False)
     download_time = db.Column(db.DateTime, default=datetime.utcnow)
 
-@app.route('/try-title')
+@app.route('/generate')
 def main_page():
     return render_template('main_page.html')
 
@@ -133,11 +134,13 @@ def main_page():
 @app.route('/auth_status', methods=['GET'])
 def auth_status():
     user_id = session.get('user_id')
+    print(f"[DEBUG] Проверка сессии: user_id={user_id}, session.permanent={session.permanent}")
     if user_id:
         user = User.query.get(user_id)
         if user:
             return jsonify({'authenticated': True, 'username': user.username})
     return jsonify({'authenticated': False})
+
 
 
 @app.route('/auth', methods=['POST'])
@@ -150,14 +153,11 @@ def auth():
         password = data.get('password')
         remember_me = data.get('remember_me', False)
 
-        # Исправленный запрос для поиска пользователя по имени
         user = User.query.filter_by(username=username).first()
-
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
-            session.permanent = remember_me  # Set session to be permanent if "Remember me" is checked
-            if not remember_me:
-                session.permanent = False  # Ensure session is non-permanent if "Remember me" is not checked
+            session.permanent = remember_me
+            print(f"[DEBUG] Успешный вход: user_id={user.id}, remember_me={remember_me}, session.permanent={session.permanent}")
             return jsonify({'success': True})
         else:
             return jsonify({'success': False, 'message': 'Неверный логин или пароль'}), 401
