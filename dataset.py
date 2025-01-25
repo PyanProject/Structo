@@ -14,16 +14,21 @@ class ModelNet40Dataset(Dataset):
         self.root_dir = root_dir
         self.split = split
         self.transform = transform
-        self.file_list = self._get_file_list()
+        self.class_to_idx = {}  # Словарь: имя класса -> индекс
+        self.file_list = self._get_file_list()  # Теперь будет хранить (путь_к_файлу, класс)
+
     
     def _get_file_list(self):
         file_list = []
         for class_name in os.listdir(self.root_dir):
+            # Добавляем класс в словарь, если его еще нет
+            if class_name not in self.class_to_idx:
+                self.class_to_idx[class_name] = len(self.class_to_idx)
             class_path = os.path.join(self.root_dir, class_name, self.split)
             if os.path.isdir(class_path):
                 for file_name in os.listdir(class_path):
                     if file_name.endswith(".off"):
-                        file_list.append(os.path.join(class_path, file_name))
+                        file_list.append((os.path.join(class_path, file_name), class_name))
         return file_list
     
     def _load_off_file(self, file_path):
@@ -40,12 +45,16 @@ class ModelNet40Dataset(Dataset):
         return len(self.file_list)
     
     def __getitem__(self, idx):
-        file_path = self.file_list[idx]
+        file_path, class_name = self.file_list[idx]
         try:
             vertices, faces = self._load_off_file(file_path)
             if self.transform:
                 vertices = self.transform(vertices)
-            return torch.tensor(vertices, dtype=torch.float32), torch.tensor(faces, dtype=torch.int64)
+            return (
+                torch.tensor(vertices, dtype=torch.float32), 
+                torch.tensor(faces, dtype=torch.int64),
+                class_name
+            )
         except Exception as e:
             print(f"Файл {file_path} повреждён или не может быть загружен: {e}")
             return None  # Возвращаем None вместо рекурсии
@@ -56,15 +65,16 @@ def collate_fn(batch):
     
     # Если все элементы в батче повреждены, пропускаем его
     if not valid_items:
-        return None, None
+        return None, None, None
     
     # Фиксированный размер вершин (1024 точки)
     fixed_num_points = 1024
     padded_batch = []
     faces_batch = []
+    classes_batch = []
     
     for item in valid_items:
-        vertices, faces = item
+        vertices, faces, class_name = item
         current_num_points = vertices.size(0)
         
         # Обрезка или дополнение нулями до 1024 точек
@@ -76,5 +86,13 @@ def collate_fn(batch):
         
         padded_batch.append(padded_item)
         faces_batch.append(faces)
+        classes_batch.append(class_name)
     
-    return torch.stack(padded_batch), faces_batch
+    return (
+        torch.stack(padded_batch), 
+        faces_batch,
+        classes_batch
+    )
+
+
+    

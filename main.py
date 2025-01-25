@@ -89,7 +89,7 @@ def main():
     # Инициализация GAN
     print("[MAIN] Инициализация GAN...")
     try:
-        generator = Generator(noise_dim=100, embedding_dim=512, output_dim=3072).to(device)
+        generator = Generator(noise_dim=100, embedding_dim=512).to(device)
         discriminator = Discriminator(data_dim=3072, embedding_dim=512).to(device)
         print("[MAIN] GAN инициализирован.")
     except Exception as e:
@@ -121,6 +121,12 @@ def main():
         with torch.no_grad():
             noise = torch.randn(1, generator.noise_dim).to(device)
             generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
+
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(generated_data)
+            print("[DEBUG] Визуализация сгенерированных точек...")
+            o3d.visualization.draw_geometries([pcd], window_name="Сгенерированные точки")
+            
 
         scene_filename = generate_3d_scene_from_embedding(generated_data, text)
         print(f"[MAIN] Модель сохранена: {scene_filename}")
