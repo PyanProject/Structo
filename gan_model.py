@@ -8,24 +8,62 @@ import torch.nn as nn
 from tqdm import tqdm  # Импорт библиотеки для прогресс-баров
 
 class Generator(nn.Module):
-    def __init__(self, noise_dim=100, embedding_dim=512, output_dim=3072):
-        super(Generator, self).__init__()
+    def __init__(self, noise_dim=100, embedding_dim=512):
+        super().__init__()
+        self.tnet = TNet(in_dim=3)
         self.noise_dim = noise_dim
         self.embedding_dim = embedding_dim
 
-        self.model = nn.Sequential(
-            nn.Linear(noise_dim + embedding_dim, 1024),
+        # Блок для объединения шума и эмбеддинга
+        self.fc = nn.Linear(noise_dim + embedding_dim, 3 * 1024)
+
+        # PointNet-слои
+        self.pointnet = nn.Sequential(
+            nn.Conv1d(3, 64, 1),  # Обрабатывает каждую точку (x, y, z)
+            nn.BatchNorm1d(64),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, 2048),
+            nn.Conv1d(64, 128, 1),
+            nn.BatchNorm1d(128),
             nn.LeakyReLU(0.2),
-            nn.Linear(2048, output_dim),
+            nn.Conv1d(128, 256, 1),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(0.2),
+        )
+
+        # Глобальный макс-пулинг (агрегация признаков)
+        self.global_pool = nn.MaxPool1d(kernel_size=1024)
+
+        # Финал генератора
+        self.final_layer = nn.Sequential(
+            nn.Linear(256, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 1024 * 3),  # 1024 точки × 3 координаты
             nn.Tanh()
         )
 
     def forward(self, noise, embedding):
-        combined_input = torch.cat((noise, embedding), dim=1)
-        x = self.model(combined_input)
-        return x.view(-1, 1024, 3)
+        # Объединяем шум и эмбеддинг
+        combined = torch.cat([noise, embedding], dim=1)
+        x = self.fc(combined)
+        
+        # Преобразуем в формат (batch, channels, points)
+        x = x.view(-1, 3, 1024)  # channels=3 (x, y, z), points=1024
+
+        transform_matrix = self.tnet(x)
+        x = torch.bmm(transform_matrix, x)
+        
+        # Обработка PointNet-слоями
+        x = self.pointnet(x)
+        
+        # Глобальный макс-пулинг
+        global_features = self.global_pool(x)  # (batch, 256, 1)
+        global_features = global_features.view(-1, 256)
+        
+        # Генерация точек
+        points = self.final_layer(global_features)
+        points = points.view(-1, 1024, 3)  # (batch, 1024, 3)
+        
+        return points
 
 class Discriminator(nn.Module):
     def __init__(self, data_dim=3072, embedding_dim=512):
@@ -65,7 +103,7 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
         # Прогресс-бар для батчей внутри эпохи
         batch_progress = tqdm(dataloader, desc=f"Эпоха {epoch+1}/{epochs}", leave=False, unit="batch")
 
-        for real_data, _ in batch_progress:
+        for real_data, _, class_names in batch_progress:
             if real_data.size(0) == 0:
                 continue
 
@@ -73,7 +111,7 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
             batch_size = real_data.size(0)
 
             # Генерация эмбеддингов
-            text = "sample text"
+            text = class_names[0]
             embedding = embedding_generator.generate_embedding(text).to(device)
             embedding = embedding.expand(batch_size, -1)
 
@@ -119,3 +157,34 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
             "Avg Loss D": f"{total_loss_D/batches:.4f}",
             "Avg Loss G": f"{total_loss_G/batches:.4f}"
         })
+
+class TNet(nn.Module):
+    def __init__(self, in_dim=3):
+        super().__init__()
+        self.in_dim = in_dim
+        self.conv_layers = nn.Sequential(
+            nn.Conv1d(in_dim, 64, 1),
+            nn.BatchNorm1d(64),
+            nn.LeakyReLU(0.2),
+            nn.Conv1d(64, 128, 1),
+            nn.BatchNorm1d(128),
+            nn.LeakyReLU(0.2),
+            nn.Conv1d(128, 256, 1),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(0.2),
+        )
+        self.global_pool = nn.MaxPool1d(kernel_size=1024)
+        self.fc_layers = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.LeakyReLU(0.2),
+            nn.Linear(128, in_dim * in_dim)  # Матрица in_dim x in_dim
+        )
+
+    def forward(self, x):
+        batch_size = x.size(0)
+        x = self.conv_layers(x)  # (batch, 256, 1024)
+        x = self.global_pool(x)  # (batch, 256, 1)
+        x = x.view(batch_size, -1)  # (batch, 256)
+        matrix = self.fc_layers(x)  # (batch, in_dim * in_dim)
+        matrix = matrix.view(batch_size, self.in_dim, self.in_dim)  # (batch, 3, 3)
+        return matrix
