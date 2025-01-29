@@ -3,6 +3,7 @@
 '''
 
 import torch
+import trimesh
 from embedding_generator import EmbeddingGenerator
 from model_generator import generate_3d_scene_from_embedding
 from dataset import ModelNet40Dataset, collate_fn
@@ -57,7 +58,7 @@ def main():
     # Загрузка датасета
     print("[MAIN] Загрузка датасета...")
     try:
-        dataset_generator = ModelNet40Dataset(root_dir="datasets/ModelNet40", split="train")
+        dataset_generator = ModelNet40Dataset(root_dir="datasets/CoolDataset", split="train")
         print("[MAIN] Датасет загружен.")
     except Exception as e:
         print(f"[MAIN] Ошибка загрузки датасета: {e}")
@@ -99,7 +100,7 @@ def main():
     # Обучение
     print("[MAIN] Запуск обучения...")
     try:
-        train_gan(generator, discriminator, dataloader, embedding_generator, epochs=10, lr=0.0001, device=device)
+        train_gan(generator, discriminator, dataloader, embedding_generator, epochs=1, lr=0.0001, device=device)
         print("[MAIN] Обучение завершено.")
     except Exception as e:
         print(f"[MAIN] Ошибка обучения: {e}")
@@ -111,27 +112,34 @@ def main():
     torch.save(discriminator.state_dict(), 'models/discriminator.pth')
     print("[MAIN] Модели сохранены.")
 
-    # Генерация 3D-модели
-    text = input("[MAIN] Введите текст для генерации 3D-модели: ")
-    try:
-        embedding = embedding_generator.generate_embedding(text).to(device)
-        if embedding.dim() == 1:
-            embedding = embedding.unsqueeze(0)
+    while True:
+        text = input("[MAIN] Введите текст для генерации 3D-модели (или 'exit' для выхода): ")
+        if text.lower() in ["exit", "quit"]:
+            print("[MAIN] Завершение работы...")
+            break
 
-        with torch.no_grad():
-            noise = torch.randn(1, generator.noise_dim).to(device)
-            generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
+        try:
+            embedding = embedding_generator.generate_embedding(text).to(device)
+            if embedding.dim() == 1:
+                embedding = embedding.unsqueeze(0)
 
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(generated_data)
-            print("[DEBUG] Визуализация сгенерированных точек...")
-            o3d.visualization.draw_geometries([pcd], window_name="Сгенерированные точки")
-            
+            with torch.no_grad():
+                noise = torch.randn(1, generator.noise_dim).to(device)
+                generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
 
-        scene_filename = generate_3d_scene_from_embedding(generated_data, text)
-        print(f"[MAIN] Модель сохранена: {scene_filename}")
-    except Exception as e:
-        print(f"[MAIN] Ошибка генерации: {e}")
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(generated_data)
+                print("[DEBUG] Визуализация сгенерированных точек...")
+                o3d.visualization.draw_geometries([pcd], window_name="Сгенерированные точки")
+                print("[DEBUG] Визуализация сохраненного мэша...")
+                #mesh = trimesh.load(saved_mesh)
+                #mesh.show()
+                
+
+            scene_filename = generate_3d_scene_from_embedding(generated_data, text)
+            print(f"[MAIN] Модель сохранена: {scene_filename}")
+        except Exception as e:
+            print(f"[MAIN] Ошибка генерации: {e}")
 
 if __name__ == "__main__":
     main()

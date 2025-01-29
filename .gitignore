@@ -1,6 +1,7 @@
 venv/
 modelit/venv
 ModelNet40/
+CoolDataset/
 
 models/*
 !models/.gitkeep
