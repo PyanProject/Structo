@@ -31,14 +31,14 @@ embedding_generator = EmbeddingGenerator(device, reduced_dim=512)
 # Инициализация GAN
 input_dim = 512
 output_dim = 512
-generator = Generator(noise_dim=100, output_dim=3072).to(device)
+generator = Generator(noise_dim=100, embedding_dim=3072).to(device)
 discriminator = Discriminator(data_dim=3072).to(device)
 
 generator_path = 'generator.pth'
 discriminator_path = 'discriminator.pth'
 
 if os.path.exists(generator_path) and os.path.exists(discriminator_path):
-    generator.load_state_dict(torch.load(generator_path, map_location=device))
+    generator.load_state_dict(torch.load(generator_path, map_location=device), strict=False)
     discriminator.load_state_dict(torch.load(discriminator_path, map_location=device))
     generator.eval()
     discriminator.eval()

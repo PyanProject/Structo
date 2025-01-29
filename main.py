@@ -4,7 +4,7 @@
 
 import torch
 from embedding_generator import EmbeddingGenerator
-from model_generator import generate_3d_scene_from_embedding
+from model_generator import generate_3d_scene_from_embedding, generate_faces
 from dataset import ModelNet40Dataset, collate_fn
 from gan_model import Generator, Discriminator, train_gan
 from torch.utils.data import DataLoader
@@ -14,7 +14,7 @@ import os
 import spacy
 from tqdm import tqdm  # Для отображения прогресса
 
-def validate_dataset(dataset):
+def validate_dataset(dataset):  
     '''Проверка целостности файлов датасета с прогресс-баром'''
     valid_files = []
     print("[MAIN] Проверка целостности файлов датасета...")
@@ -63,12 +63,12 @@ def main():
         print(f"[MAIN] Ошибка загрузки датасета: {e}")
         return
 
-    # Валидация датасета
+    # Валидация датасета 
     try:
         validate_dataset(dataset_generator)
     except ValueError as e:
         print(f"[MAIN] Критическая ошибка: {e}")
-        return
+        return 
 
     # DataLoader
     print("[MAIN] Создание DataLoader...")
@@ -97,13 +97,10 @@ def main():
         return
 
     # Обучение
+
     print("[MAIN] Запуск обучения...")
-    try:
-        train_gan(generator, discriminator, dataloader, embedding_generator, epochs=10, lr=0.0001, device=device)
-        print("[MAIN] Обучение завершено.")
-    except Exception as e:
-        print(f"[MAIN] Ошибка обучения: {e}")
-        return
+    train_gan(generator, discriminator, dataloader, embedding_generator, epochs=10, lr=0.0001, device=device)
+    print("[MAIN] Обучение завершено.")
 
     # Сохранение моделей
     os.makedirs('models', exist_ok=True)
@@ -122,13 +119,19 @@ def main():
             noise = torch.randn(1, generator.noise_dim).to(device)
             generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
 
+            print('[DEBUG] Визуалиация данных:')
+
             pcd = o3d.geometry.PointCloud()
+
+            print("создание облака точек")
+            generated_data = np.asarray(generated_data, dtype=np.float64)
             pcd.points = o3d.utility.Vector3dVector(generated_data)
             print("[DEBUG] Визуализация сгенерированных точек...")
             o3d.visualization.draw_geometries([pcd], window_name="Сгенерированные точки")
             
-
-        scene_filename = generate_3d_scene_from_embedding(generated_data, text)
+        faces = generate_faces(generated_data.reshape(-1, 3))
+        print('Сохранение модели')
+        scene_filename = generate_3d_scene_from_embedding(generated_data, text, faces)
         print(f"[MAIN] Модель сохранена: {scene_filename}")
     except Exception as e:
         print(f"[MAIN] Ошибка генерации: {e}")

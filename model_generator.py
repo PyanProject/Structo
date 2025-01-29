@@ -8,6 +8,7 @@ import trimesh
 import os
 import hashlib
 import open3d as o3d
+import matplotlib.pyplot as plt
 
 
 # при генерации модели она сохраняется и ей присваивается уникальное имя. очень важная ф-ция
@@ -28,30 +29,44 @@ def manage_model_files(output_dir: str, max_files: int = 10):
 def normalize(value, min_val, max_val):
     return (value - min_val) / (max_val - min_val)
 
-def generate_3d_scene_from_embedding(generated_data, text, output_dir="models"):
-    print("[MODEL GEN] Генерация сцены...")
-    manage_model_files(output_dir)
-    scene_filename = generate_unique_filename(text, output_dir)
-    
-    # Проверка данных
-    assert generated_data.ndim == 2 and generated_data.shape[1] == 3, "Generated data must be of shape (N, 3)"
-    if np.isnan(generated_data).any() or np.isinf(generated_data).any():
-        print("[MODEL GEN] Generated data contains NaNs or Infs. Cannot create mesh.")
+import trimesh
+import numpy as np
+import matplotlib.pyplot as plt
+
+def generate_3d_scene_from_embedding(embedding, text, faces, output_dir="models"):
+    try:
+        # Преобразование эмбеддинга в вершины
+        vertices = embedding.reshape(-1, 3)
+        print(f"[DEBUG] Вершины: {vertices[:5]}")  # Вывод первых 5 вершин для отладки
+
+        # Использование реальных данных для граней
+        mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+        print(f"[DEBUG] Грани: {faces[:5]}")  # Вывод первых 5 граней для отладки
+
+        # Альтернативная визуализация с использованием matplotlib
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2], triangles=faces, cmap='viridis', edgecolor='none')
+        plt.show()
+        print("[DEBUG] Визуализация выполнена")
+
+        # Сохранение модели
+        scene_filename = generate_unique_filename(text, output_dir)
+        mesh.export(scene_filename)
+        manage_model_files(output_dir)
+        print(f"[MODEL GEN] 3D модель сохранена в файл: {scene_filename}")
+        return scene_filename
+    except Exception as e:
+        print(f"[ERROR] Ошибка при генерации 3D сцены: {e}")
         return None
-
-    # Создание облака точек
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(generated_data)
-
-    # Расчет нормалей
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-    pcd.orient_normals_to_align_with_direction(orientation_reference=np.array([0.0, 0.0, 1.0]))  # Ориентация по оси Z
     
-    # Реконструкция меша с использованием Ball-Pivoting
-    radii = [0.01, 0.02, 0.04]
-    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pcd, o3d.utility.DoubleVector(radii))
-    
-    # Сохранение
-    o3d.io.write_triangle_mesh(scene_filename, mesh)
-    print(f"[MODEL GEN] Модель сохранена: {scene_filename}")
-    return scene_filename
+
+def generate_faces(vertices):
+    # Пример генерации граней для простого случая
+    # Здесь предполагается, что vertices представляет собой сетку точек
+    # Для более сложных случаев используйте алгоритмы триангуляции
+    faces = []
+    for i in range(len(vertices) - 1):
+        if i % 2 == 0:
+            faces.append([i, i + 1, (i + 2) % len(vertices)])
+    return np.array(faces)

@@ -84,6 +84,34 @@ class Discriminator(nn.Module):
         combined_input = torch.cat((data.view(data.size(0), -1), embedding), dim=1)
         return self.model(combined_input)
 
+from sklearn.metrics import pairwise_distances
+import numpy as np
+
+def calculate_fid(real_embeddings, fake_embeddings):
+    # Убедитесь, что входные данные имеют размерность (n_samples, n_features)
+    real_embeddings = real_embeddings.reshape(real_embeddings.shape[0], -1)
+    fake_embeddings = fake_embeddings.reshape(fake_embeddings.shape[0], -1)
+
+    mu_real = np.mean(real_embeddings, axis=0)
+    sigma_real = np.cov(real_embeddings, rowvar=False)
+    mu_fake = np.mean(fake_embeddings, axis=0)
+    sigma_fake = np.cov(fake_embeddings, rowvar=False)
+
+    diff = mu_real - mu_fake
+    covmean = np.sqrt(sigma_real.dot(sigma_fake))
+
+    fid = diff.dot(diff) + np.trace(sigma_real + sigma_fake - 2 * covmean)
+    return fid
+
+def calculate_is(fake_embeddings):
+    # Убедитесь, что входные данные имеют размерность (n_samples, n_features)
+    fake_embeddings = fake_embeddings.reshape(fake_embeddings.shape[0], -1)
+
+    # Пример вычисления Inception Score
+    kl_divergence = fake_embeddings * (np.log(fake_embeddings) - np.log(np.mean(fake_embeddings, axis=0)))
+    is_score = np.exp(np.mean(np.sum(kl_divergence, axis=1)))
+    return is_score
+
 def train_gan(generator, discriminator, dataloader, embedding_generator, epochs, lr, device):
     generator.train()
     discriminator.train()
@@ -99,6 +127,9 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
         total_loss_D = 0.0
         total_loss_G = 0.0
         batches = 0
+
+        real_embeddings = []
+        fake_embeddings = []
 
         # Прогресс-бар для батчей внутри эпохи
         batch_progress = tqdm(dataloader, desc=f"Эпоха {epoch+1}/{epochs}", leave=False, unit="batch")
@@ -146,6 +177,10 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
             total_loss_G += loss_G.item()
             batches += 1
 
+            # Сохранение эмбеддингов для метрик
+            real_embeddings.append(real_data.cpu().detach().numpy())
+            fake_embeddings.append(fake_data.cpu().detach().numpy())
+
             # Обновление прогресс-бара батчей
             batch_progress.set_postfix({
                 "Loss D": f"{loss_D.item():.4f}",
@@ -157,6 +192,16 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
             "Avg Loss D": f"{total_loss_D/batches:.4f}",
             "Avg Loss G": f"{total_loss_G/batches:.4f}"
         })
+
+        # Вычисление метрик
+        real_embeddings = np.concatenate(real_embeddings, axis=0)
+        fake_embeddings = np.concatenate(fake_embeddings, axis=0)
+        fid = calculate_fid(real_embeddings, fake_embeddings)
+        is_score = calculate_is(fake_embeddings)
+
+        print(f"[Epoch {epoch+1}] FID: {fid:.4f}, IS: {is_score:.4f}")
+
+    print('Функция отработала успешно')
 
 class TNet(nn.Module):
     def __init__(self, in_dim=3):
