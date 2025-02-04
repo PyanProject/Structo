@@ -53,7 +53,8 @@ class ModelNet40Dataset(Dataset):
             return (
                 torch.tensor(vertices, dtype=torch.float32), 
                 torch.tensor(faces, dtype=torch.int64),
-                class_name
+                class_name,
+                file_path
             )
         except Exception as e:
             print(f"Файл {file_path} повреждён или не может быть загружен: {e}")
@@ -67,17 +68,17 @@ def collate_fn(batch):
     if not valid_items:
         return None, None, None
     
-    # Фиксированный размер вершин (1024 точки)
-    fixed_num_points = 1024
+    # Фиксированный размер вершин (4096 точек)
+    fixed_num_points = 4096
     padded_batch = []
     faces_batch = []
     classes_batch = []
     
     for item in valid_items:
-        vertices, faces, class_name = item
+        vertices, faces, class_name, file_path = item
         current_num_points = vertices.size(0)
         
-        # Обрезка или дополнение нулями до 1024 точек
+        # Обрезка или дополнение нулями до 4096 точек
         if current_num_points >= fixed_num_points:
             padded_item = vertices[:fixed_num_points]
         else:

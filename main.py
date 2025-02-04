@@ -91,7 +91,7 @@ def main():
     print("[MAIN] Инициализация GAN...")
     try:
         generator = Generator(noise_dim=100, embedding_dim=512).to(device)
-        discriminator = Discriminator(data_dim=3072, embedding_dim=512).to(device)
+        discriminator = Discriminator(data_dim=12288, embedding_dim=512).to(device)
         print("[MAIN] GAN инициализирован.")
     except Exception as e:
         print(f"[MAIN] Ошибка инициализации GAN: {e}")
@@ -100,7 +100,7 @@ def main():
     # Обучение
     print("[MAIN] Запуск обучения...")
     try:
-        train_gan(generator, discriminator, dataloader, embedding_generator, epochs=1, lr=0.0001, device=device)
+        train_gan(generator, discriminator, dataloader, embedding_generator, epochs=3, lr=0.0001, device=device)
         print("[MAIN] Обучение завершено.")
     except Exception as e:
         print(f"[MAIN] Ошибка обучения: {e}")
@@ -124,13 +124,15 @@ def main():
                 embedding = embedding.unsqueeze(0)
 
             with torch.no_grad():
-                noise = torch.randn(1, generator.noise_dim).to(device)
+                noise = 0.1 * torch.randn(1, generator.noise_dim).to(device)
                 generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
 
                 pcd = o3d.geometry.PointCloud()
                 pcd.points = o3d.utility.Vector3dVector(generated_data)
-                print("[DEBUG] Визуализация сгенерированных точек...")
-                o3d.visualization.draw_geometries([pcd], window_name="Сгенерированные точки")
+                # Установка единого цвета для всех точек:
+                pcd.paint_uniform_color([0.7, 0.7, 0.7])
+                print("[DEBUG] Visualizing generated point cloud...")
+                o3d.visualization.draw_geometries([pcd], window_name="Generated Points")
                 print("[DEBUG] Визуализация сохраненного мэша...")
                 #mesh = trimesh.load(saved_mesh)
                 #mesh.show()

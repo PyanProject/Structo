@@ -7,6 +7,20 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm  # Импорт библиотеки для прогресс-баров
 
+def chamfer_distance(pc1, pc2):
+    """
+    Вычисляет Chamfer distance между двумя батчами облаков точек.
+    pc1, pc2: тензоры размера (B, N, 3)
+    """
+    # Вычисляем попарные разности: (B, N, N, 3)
+    diff = pc1.unsqueeze(2) - pc2.unsqueeze(1)
+    # Евклидовы расстояния
+    dist = torch.norm(diff, dim=-1)  # (B, N, N)
+    min1, _ = torch.min(dist, dim=2)  # (B, N)
+    min2, _ = torch.min(dist, dim=1)  # (B, N)
+    loss = torch.mean(min1) + torch.mean(min2)
+    return loss
+
 class Generator(nn.Module):
     def __init__(self, noise_dim=100, embedding_dim=512):
         super().__init__()
@@ -14,12 +28,12 @@ class Generator(nn.Module):
         self.noise_dim = noise_dim
         self.embedding_dim = embedding_dim
 
-        # Блок для объединения шума и эмбеддинга
-        self.fc = nn.Linear(noise_dim + embedding_dim, 3 * 1024)
+        # Block for combining noise and embedding
+        self.fc = nn.Linear(noise_dim + embedding_dim, 3 * 4096)  # Generate 4096 points
 
-        # PointNet-слои
+        # PointNet layers
         self.pointnet = nn.Sequential(
-            nn.Conv1d(3, 64, 1),  # Обрабатывает каждую точку (x, y, z)
+            nn.Conv1d(3, 64, 1),  # Process each point (x, y, z)
             nn.BatchNorm1d(64),
             nn.LeakyReLU(0.2),
             nn.Conv1d(64, 128, 1),
@@ -30,14 +44,14 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2),
         )
 
-        # Глобальный макс-пулинг (агрегация признаков)
-        self.global_pool = nn.MaxPool1d(kernel_size=1024)
+        # Global max pooling (feature aggregation)
+        self.global_pool = nn.MaxPool1d(kernel_size=4096)
 
-        # Финал генератора
+        # Final layers of generator
         self.final_layer = nn.Sequential(
             nn.Linear(256, 512),
             nn.LeakyReLU(0.2),
-            nn.Linear(512, 1024 * 3),  # 1024 точки × 3 координаты
+            nn.Linear(512, 4096 * 3),  # 4096 points × 3 coordinates
             nn.Tanh()
         )
 
@@ -46,8 +60,8 @@ class Generator(nn.Module):
         combined = torch.cat([noise, embedding], dim=1)
         x = self.fc(combined)
         
-        # Преобразуем в формат (batch, channels, points)
-        x = x.view(-1, 3, 1024)  # channels=3 (x, y, z), points=1024
+        # Reshape to (batch, channels, points)
+        x = x.view(-1, 3, 4096)  # channels=3 (x, y, z), points=4096
 
         transform_matrix = self.tnet(x)
         x = torch.bmm(transform_matrix, x)
@@ -61,12 +75,13 @@ class Generator(nn.Module):
         
         # Генерация точек
         points = self.final_layer(global_features)
-        points = points.view(-1, 1024, 3)  # (batch, 1024, 3)
+        points = 5.0 * points    # Scale output to enlarge the point cloud
+        points = points.view(-1, 4096, 3)  # (batch, 4096, 3)
         
         return points
 
 class Discriminator(nn.Module):
-    def __init__(self, data_dim=3072, embedding_dim=512):
+    def __init__(self, data_dim=12288, embedding_dim=512):
         super(Discriminator, self).__init__()
         self.data_dim = data_dim
         self.embedding_dim = embedding_dim
@@ -137,7 +152,9 @@ def train_gan(generator, discriminator, dataloader, embedding_generator, epochs,
             noise = torch.randn(batch_size, generator.noise_dim).to(device)
             fake_data = generator(noise, embedding)
             fake_preds = discriminator(fake_data, embedding)
-            loss_G = criterion(fake_preds, real_labels)
+            adv_loss = criterion(fake_preds, real_labels)
+            c_loss = chamfer_distance(fake_data, real_data)
+            loss_G = adv_loss + 0.1 * c_loss
             loss_G.backward()
             optimizer_G.step()
 
@@ -173,7 +190,7 @@ class TNet(nn.Module):
             nn.BatchNorm1d(256),
             nn.LeakyReLU(0.2),
         )
-        self.global_pool = nn.MaxPool1d(kernel_size=1024)
+        self.global_pool = nn.MaxPool1d(kernel_size=4096)
         self.fc_layers = nn.Sequential(
             nn.Linear(256, 128),
             nn.LeakyReLU(0.2),
@@ -182,7 +199,7 @@ class TNet(nn.Module):
 
     def forward(self, x):
         batch_size = x.size(0)
-        x = self.conv_layers(x)  # (batch, 256, 1024)
+        x = self.conv_layers(x)  # (batch, 256, 4096)
         x = self.global_pool(x)  # (batch, 256, 1)
         x = x.view(batch_size, -1)  # (batch, 256)
         matrix = self.fc_layers(x)  # (batch, in_dim * in_dim)
