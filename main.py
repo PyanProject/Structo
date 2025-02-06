@@ -3,8 +3,9 @@
 '''
 
 import torch
+import trimesh
 from embedding_generator import EmbeddingGenerator
-from model_generator import generate_3d_scene_from_embedding, generate_faces
+from model_generator import generate_3d_scene_from_embedding
 from dataset import ModelNet40Dataset, collate_fn
 from gan_model import Generator, Discriminator, train_gan
 from torch.utils.data import DataLoader
@@ -14,7 +15,7 @@ import os
 import spacy
 from tqdm import tqdm  # Для отображения прогресса
 
-def validate_dataset(dataset):  
+def validate_dataset(dataset):
     '''Проверка целостности файлов датасета с прогресс-баром'''
     valid_files = []
     print("[MAIN] Проверка целостности файлов датасета...")
@@ -57,18 +58,18 @@ def main():
     # Загрузка датасета
     print("[MAIN] Загрузка датасета...")
     try:
-        dataset_generator = ModelNet40Dataset(root_dir="datasets/ModelNet40", split="train")
+        dataset_generator = ModelNet40Dataset(root_dir="datasets/CoolDataset", split="train")
         print("[MAIN] Датасет загружен.")
     except Exception as e:
         print(f"[MAIN] Ошибка загрузки датасета: {e}")
         return
 
-    # Валидация датасета 
+    # Валидация датасета
     try:
         validate_dataset(dataset_generator)
     except ValueError as e:
         print(f"[MAIN] Критическая ошибка: {e}")
-        return 
+        return
 
     # DataLoader
     print("[MAIN] Создание DataLoader...")
@@ -90,17 +91,20 @@ def main():
     print("[MAIN] Инициализация GAN...")
     try:
         generator = Generator(noise_dim=100, embedding_dim=512).to(device)
-        discriminator = Discriminator(data_dim=3072, embedding_dim=512).to(device)
+        discriminator = Discriminator(data_dim=12288, embedding_dim=512).to(device)
         print("[MAIN] GAN инициализирован.")
     except Exception as e:
         print(f"[MAIN] Ошибка инициализации GAN: {e}")
         return
 
     # Обучение
-
     print("[MAIN] Запуск обучения...")
-    train_gan(generator, discriminator, dataloader, embedding_generator, epochs=10, lr=0.0001, device=device)
-    print("[MAIN] Обучение завершено.")
+    try:
+        train_gan(generator, discriminator, dataloader, embedding_generator, epochs=3, lr=0.0001, device=device)
+        print("[MAIN] Обучение завершено.")
+    except Exception as e:
+        print(f"[MAIN] Ошибка обучения: {e}")
+        return
 
     # Сохранение моделей
     os.makedirs('models', exist_ok=True)
@@ -108,33 +112,36 @@ def main():
     torch.save(discriminator.state_dict(), 'models/discriminator.pth')
     print("[MAIN] Модели сохранены.")
 
-    # Генерация 3D-модели
-    text = input("[MAIN] Введите текст для генерации 3D-модели: ")
-    try:
-        embedding = embedding_generator.generate_embedding(text).to(device)
-        if embedding.dim() == 1:
-            embedding = embedding.unsqueeze(0)
+    while True:
+        text = input("[MAIN] Введите текст для генерации 3D-модели (или 'exit' для выхода): ")
+        if text.lower() in ["exit", "quit"]:
+            print("[MAIN] Завершение работы...")
+            break
 
-        with torch.no_grad():
-            noise = torch.randn(1, generator.noise_dim).to(device)
-            generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
+        try:
+            embedding = embedding_generator.generate_embedding(text).to(device)
+            if embedding.dim() == 1:
+                embedding = embedding.unsqueeze(0)
 
-            print('[DEBUG] Визуалиация данных:')
+            with torch.no_grad():
+                noise = 0.1 * torch.randn(1, generator.noise_dim).to(device)
+                generated_data = generator(noise, embedding).cpu().detach().numpy().squeeze()
 
-            pcd = o3d.geometry.PointCloud()
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(generated_data)
+                # Установка единого цвета для всех точек:
+                pcd.paint_uniform_color([0.7, 0.7, 0.7])
+                print("[DEBUG] Visualizing generated point cloud...")
+                o3d.visualization.draw_geometries([pcd], window_name="Generated Points")
+                print("[DEBUG] Визуализация сохраненного мэша...")
+                #mesh = trimesh.load(saved_mesh)
+                #mesh.show()
+                
 
-            print("создание облака точек")
-            generated_data = np.asarray(generated_data, dtype=np.float64)
-            pcd.points = o3d.utility.Vector3dVector(generated_data)
-            print("[DEBUG] Визуализация сгенерированных точек...")
-            o3d.visualization.draw_geometries([pcd], window_name="Сгенерированные точки")
-            
-        faces = generate_faces(generated_data.reshape(-1, 3))
-        print('Сохранение модели')
-        scene_filename = generate_3d_scene_from_embedding(generated_data, text, faces)
-        print(f"[MAIN] Модель сохранена: {scene_filename}")
-    except Exception as e:
-        print(f"[MAIN] Ошибка генерации: {e}")
+            scene_filename = generate_3d_scene_from_embedding(generated_data, text)
+            print(f"[MAIN] Модель сохранена: {scene_filename}")
+        except Exception as e:
+            print(f"[MAIN] Ошибка генерации: {e}")
 
 if __name__ == "__main__":
     main()
