@@ -235,7 +235,7 @@ def train(args, device):
     print(f"Training completed. Model checkpoint saved to {args.checkpoint}")
 
 # Generation procedure: generate a new 3D model from a text prompt
-def generate(args, device):
+def generate(args, device, need_visualisation=True):
     latent_dim = args.latent_dim
     cond_dim = args.cond_dim
     cvae = CVAE_Conditional(latent_dim, args.voxel_size, cond_dim).to(device)
@@ -269,11 +269,14 @@ def generate(args, device):
         for face in faces:
             f.write("f {} {} {}\n".format(face[0]+1, face[1]+1, face[2]+1))
     print(f"3D model generated and saved to {args.output}")
-    # Visualize generated mesh
-    mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
-    mesh_vis.visual.face_colors = [200, 200, 200, 255]
-    scene = mesh_vis.scene()
-    scene.show()
+    if need_visualisation:
+        # Visualize generated mesh
+        mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
+        mesh_vis.visual.face_colors = [200, 200, 200, 255]
+        scene = mesh_vis.scene()
+        scene.show()
+
+    return args.output
 
 def main():
     parser = argparse.ArgumentParser(description="VAE-GAN for text-to-3D Model Generation on custom dataset")

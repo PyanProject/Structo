@@ -268,30 +268,22 @@ window.onload = function() {
     pointLight.position.set(10, 10, 10);
     scene.add(pointLight);
 
-    const loader = new THREE.PLYLoader();
+    const loader = new THREE.OBJLoader();
     loader.load(
       url,
-      function (geometry) {
-        if (!geometry || geometry.attributes.position.count === 0) {
-          console.error('Empty geometry');
-          resultBox.textContent = t.genErrorFail;
+      function (object) {
+        if (!object) {
+          console.error('Empty object');
+          resultBox.textContent = 'empty object';
           callback(false);
           return;
         }
-        geometry.computeVertexNormals();
-        const material = new THREE.MeshStandardMaterial({
-          vertexColors: true,
-          metalness: 0.5,
-          roughness: 0.5
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
+        scene.add(object);
         camera.position.set(0, 0, 5);
-        mesh.scale.multiplyScalar(1); // Увеличим для наглядности
-        geometry.computeBoundingBox();
-        const center = new THREE.Vector3();
-        geometry.boundingBox.getCenter(center);
-        mesh.position.sub(center);
+        object.scale.multiplyScalar(1); // Увеличим для наглядности
+        const box = new THREE.Box3().setFromObject(object);
+        const center = box.getCenter(new THREE.Vector3());
+        object.position.sub(center);
 
         camera.position.z = 5;
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -323,7 +315,7 @@ window.onload = function() {
               if (url) {
                   const link = document.createElement('a');
                   link.href = url;
-                  link.download = 'model.ply'; // Укажите имя файла
+                  link.download = 'model.obj'; // Укажите имя файла
                   link.click();
               } else {
                   alert('Модель не найдена!');
@@ -336,11 +328,12 @@ window.onload = function() {
         console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
       },
       function (error) {
-        console.error('Ошибка при загрузке PLY файла:', error);
-        errorMessage.innerText = t.genErrorLoad;
+        console.error('Ошибка при загрузке OBJ файла:', error);
+        resultBox.textContent = 'load error';
         callback(false);
       }
     );
+    console.log('compile done...');
   }
 };
 

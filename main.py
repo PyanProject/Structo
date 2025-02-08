@@ -144,4 +144,5 @@ def main():
             print(f"[MAIN] Ошибка генерации: {e}")
 
 if __name__ == "__main__":
-    main()
+    path = os.path.abspath(os.getcwd())
+    print(f'{path}/<filename>')

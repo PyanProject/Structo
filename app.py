@@ -17,9 +17,13 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from newgen import generate as newgen
+import argparse
+
 app = Flask(__name__)
-UPLOAD_FOLDER = 'models'
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'models')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Инициализация устройства
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -58,6 +62,40 @@ def generate():
     if not text:
         return jsonify({'error': 'Текстовое поле пустое. Пожалуйста, введите текст.'}), 400
     print(f"[APP] Получен запрос на генерацию модели для текста: {text}")
+
+    parser = argparse.ArgumentParser(description="VAE-GAN for text-to-3D Model Generation on custom dataset")
+    parser.add_argument("--dataset", type=str, default="testdataset", help="Path to dataset directory containing OFF files")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=8, help="Training batch size")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--checkpoint", type=str, default="vae_gan_test.pth", help="Checkpoint file path")
+    parser.add_argument("--voxel_size", type=int, default=64, help="Voxel grid resolution")
+    parser.add_argument("--output", type=str, default="static/models/model.obj", help="Output OBJ file for generation")
+    parser.add_argument("--lambda_adv", type=float, default=0.001, help="Weight factor for adversarial loss")
+    parser.add_argument("--prompt", type=str, default=text, help="Text prompt for conditional 3D generation")
+    parser.add_argument("--cond_dim", type=int, default=512, help="Dimension of the condition vector")
+    parser.add_argument("--latent_dim", type=int, default=128, help="Dimension of latent vector")
+    parser.add_argument("--num_workers", type=int, default=0, help="Number of workers for data loading")
+    parser.add_argument("--mode", type=str, default='generate', help="Mode of operation: 'generate'")
+    
+    args = parser.parse_args()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    scene_filename = newgen(args=args, device=device, need_visualisation=False)
+    
+    filename = os.path.basename(scene_filename)
+    model_url = url_for('download_file', filename=filename)
+    print(model_url)
+    return jsonify({'model_url': model_url})
+    '''user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Вы должны быть авторизованы для генерации моделей.'}), 403
+
+    data = request.json
+    text = data.get('text', '')
+    if not text:
+        return jsonify({'error': 'Текстовое поле пустое. Пожалуйста, введите текст.'}), 400
+    print(f"[APP] Получен запрос на генерацию модели для текста: {text}")
     
     embedding = embedding_generator.generate_embedding(text).squeeze()
     
@@ -70,9 +108,9 @@ def generate():
     
     filename = os.path.basename(scene_filename)
     model_url = url_for('download_file', filename=filename)
-    return jsonify({'model_url': model_url})
+    return jsonify({'model_url': model_url})'''
 
-@app.route('/downloads/<filename>')
+@app.route(f'/static/models/<filename>')
 def download_file(filename):
     user_id = session.get('user_id')
     if not user_id:

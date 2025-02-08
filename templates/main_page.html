@@ -10,6 +10,11 @@
     <link rel="icon" type="image/png" sizes="16x16" href="static\pictures\mfavicon.ico?v=1">
     <link rel="icon" type="image/x-icon" href="static\pictures\mfavicon.ico?v=1">
 
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    
 </head>
 <body>
     <div class="top-header" id="header-title">
@@ -315,14 +320,5 @@
     .catch(error => console.error('Ошибка при смене языка или проверке авторизации:', error));
 }
 </script>
-
-
-
-
-
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
 </html>
