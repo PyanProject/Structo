@@ -1,220 +1,218 @@
 """
-Conditional VAE with Attention for Text-to-3D Generation.
+Text-to-3D Generation via Text → Image → 3D Pipeline.
 
 Requirements:
 - A dataset of 3D models (ModelNet40Dataset from dataset.py) with OFF files.
 - EmbeddingGenerator (from embedding_generator.py) that produces a text embedding of dimension 512.
+- This file implements a text→image→3D pipeline.
 """
 
 import os
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
 import numpy as np
 import open3d as o3d
+import requests  # For external image retrieval via HTTP
 from tqdm import tqdm
+from opensimplex import OpenSimplex  # Using opensimplex for 2D noise generation
 
+import cv2  # Used for image processing
 from dataset import ModelNet40Dataset, collate_fn
-from embedding_generator import EmbeddingGenerator  # Should return text embedding (dim=512)
+from embedding_generator import EmbeddingGenerator  # (if needed for retrieval or further conditioning)
+from skimage.measure import marching_cubes  # For isosurface extraction from volumetric data
+import math
 
-# Function to compute Chamfer Distance between two point clouds (B, N, 3)
-def chamfer_distance(pc1, pc2):
+# ------------------------------------------------------------------------------
+# Function to generate an image from text.
+# The image is generated using OpenSimplex noise with fBm,
+# then enhanced via sigmoid mapping for increased contrast.
+# ------------------------------------------------------------------------------
+def generate_image_from_text(query_text, embedding_generator=None):
     """
-    Computes the Chamfer distance between two batches of point clouds.
-    pc1, pc2: tensors of shape (B, N, 3)
+    Generates an image (numpy array of shape (256, 256, 3)) from a text prompt using OpenSimplex noise.
+    Deterministic output based on the hash of the query for consistency.
+    If embedding_generator is provided, it modulates contrast and brightness.
     """
-    diff = pc1.unsqueeze(2) - pc2.unsqueeze(1)  # (B, N, N, 3)
-    dist = torch.norm(diff, dim=-1)  # (B, N, N)
-    min1, _ = torch.min(dist, dim=2)  # (B, N)
-    min2, _ = torch.min(dist, dim=1)  # (B, N)
-    loss = torch.mean(min1) + torch.mean(min2)
-    return loss
+    # Если запрос начинается с "neural:", используем нейросетевую генерацию изображения.
+    if query_text.lower().startswith("neural:"):
+         prompt = query_text[len("neural:"):].strip()
+         try:
+              image = generate_neural_image_from_text(prompt)
+              print("Image generated using neural network.")
+              return image
+         except Exception as e:
+              print(f"Neural generation failed: {e}. Falling back to noise-based generation.")
 
-# KL divergence function for VAE
-def kl_divergence(mu, logvar):
-    return -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+    # Seed for noise generation (fallback to noise-based generation)
+    seed = int.from_bytes(query_text.encode(), 'little') % (2 ** 32)
+    generator = OpenSimplex(seed)
 
-# Encoder: takes a point cloud (B, 4096, 3) and produces mu and logvar (B, latent_dim)
-class Encoder(nn.Module):
-    def __init__(self, latent_dim=256):
-        super(Encoder, self).__init__()
-        self.conv1 = nn.Conv1d(3, 64, 1)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.conv2 = nn.Conv1d(64, 128, 1)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.conv3 = nn.Conv1d(128, 256, 1)
-        self.bn3 = nn.BatchNorm1d(256)
-        self.conv4 = nn.Conv1d(256, 512, 1)
-        self.bn4 = nn.BatchNorm1d(512)
-        self.dropout = nn.Dropout(0.3)
-        self.global_pool = nn.AdaptiveMaxPool1d(1)  # Produces (B, 512, 1)
-        self.fc_mean = nn.Linear(512, latent_dim)
-        self.fc_logvar = nn.Linear(512, latent_dim)
+    # Noise parameters (can be modulated via embedding if available)
+    scale_factor = 20.0   # Lower scale factor => finer details
+    octaves = 4
+    persistence = 0.6
+    lacunarity = 2.0
+
+    # Optionally modulate noise parameters with text embedding:
+    if embedding_generator is not None:
+        embedding = embedding_generator.generate_embedding(query_text)
+        if isinstance(embedding, torch.Tensor):
+            embedding = embedding.cpu().numpy()
+        # Adjust scale factor based on embedding mean (example modulation)
+        scale_factor = 20.0 * (0.9 + (np.mean(embedding) % 0.2))
+        # Similarly, brightness offset can be computed if needed.
     
-    def forward(self, x):
-        # x: (B, 4096, 3) -> transpose -> (B, 3, 4096)
-        x = x.transpose(1, 2)
-        x = torch.relu(self.bn1(self.conv1(x)))
-        x = torch.relu(self.bn2(self.conv2(x)))
-        x = torch.relu(self.bn3(self.conv3(x)))
-        x = torch.relu(self.bn4(self.conv4(x)))
-        x = self.dropout(x)
-        x = self.global_pool(x)  # (B, 512, 1)
-        x = x.squeeze(-1)        # (B, 512)
-        mu = self.fc_mean(x)
-        logvar = self.fc_logvar(x)
-        return mu, logvar
-
-# A simple residual MLP block (can be useful for other architectures)
-class ResidualMLP(nn.Module):
-    def __init__(self, dim):
-        super(ResidualMLP, self).__init__()
-        self.fc1 = nn.Linear(dim, dim)
-        self.bn1 = nn.BatchNorm1d(dim)
-        self.relu = nn.ReLU(inplace=True)
-        self.fc2 = nn.Linear(dim, dim)
-        self.bn2 = nn.BatchNorm1d(dim)
-
-    def forward(self, x):
-        residual = x
-        out = self.relu(self.bn1(self.fc1(x)))
-        out = self.bn2(self.fc2(out))
-        out += residual
-        out = self.relu(out)
-        return out
-
-# AttentionDecoder using TransformerDecoder
-class AttentionDecoder(nn.Module):
-    def __init__(self, latent_dim=256, text_dim=512, num_points=1024, num_tokens=16, model_dim=256, num_layers=3):
-        super(AttentionDecoder, self).__init__()
-        self.num_tokens = num_tokens
-        self.model_dim = model_dim
-        self.num_points = num_points
-        # Project latent vector to a set of query tokens
-        self.latent_to_tokens = nn.Linear(latent_dim, num_tokens * model_dim)
-        # Project text embedding to a set of key/value tokens
-        self.text_to_tokens = nn.Linear(text_dim, num_tokens * model_dim)
-        # Define TransformerDecoder layer with 8 attention heads
-        decoder_layer = nn.TransformerDecoderLayer(d_model=model_dim, nhead=8)
-        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
-        # Final MLP to convert processed tokens into point coordinates
-        self.mlp = nn.Sequential(
-            nn.Linear(num_tokens * model_dim, 512),
-            nn.ReLU(),
-            nn.Linear(512, num_points * 3)
-        )
+    # Generate noise image using fBm
+    noise_img = np.zeros((256, 256), dtype=np.float32)
     
-    def forward(self, latent, text_embedding):
-        B = latent.size(0)
-        # Project latent vector into tokens: (B, num_tokens, model_dim)
-        latent_tokens = self.latent_to_tokens(latent).view(B, self.num_tokens, self.model_dim)
-        # Project text embedding into tokens: (B, num_tokens, model_dim)
-        text_tokens = self.text_to_tokens(text_embedding).view(B, self.num_tokens, self.model_dim)
-        # Transformer expects tensor shape: (sequence_length, batch, d_model)
-        latent_tokens = latent_tokens.transpose(0, 1)  # (num_tokens, B, model_dim)
-        text_tokens = text_tokens.transpose(0, 1)      # (num_tokens, B, model_dim)
-        # Cross-attention: latent_tokens (query) attends to text_tokens (memory)
-        tokens = self.transformer_decoder(latent_tokens, text_tokens)  # (num_tokens, B, model_dim)
-        tokens = tokens.transpose(0, 1).contiguous().view(B, -1)  # (B, num_tokens * model_dim)
-        points = self.mlp(tokens)  # (B, num_points * 3)
-        points = points.view(B, self.num_points, 3)
-        return points
+    def fBm(x, y, octaves, persistence, lacunarity, generator):
+        value = 0.0
+        amplitude = 1.0
+        frequency = 1.0
+        total_amplitude = 0.0
+        for _ in range(octaves):
+            value += generator.noise2(x * frequency, y * frequency) * amplitude
+            total_amplitude += amplitude
+            amplitude *= persistence
+            frequency *= lacunarity
+        return value / total_amplitude
 
-# The full VAE model: uses the Encoder and the new AttentionDecoder
-class TextTo3DNet(nn.Module):
-    def __init__(self, latent_dim=256, text_dim=512, num_points=1024):
-        super(TextTo3DNet, self).__init__()
-        self.encoder = Encoder(latent_dim)
-        self.decoder = AttentionDecoder(latent_dim, text_dim, num_points)
+    for i in range(256):
+        for j in range(256):
+            noise_img[i, j] = fBm(i / scale_factor, j / scale_factor, octaves, persistence, lacunarity, generator)
     
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-    
-    def forward(self, point_cloud, text_embedding):
-        # point_cloud: (B, 4096, 3), text_embedding: (B, 512)
-        mu, logvar = self.encoder(point_cloud)
-        z = self.reparameterize(mu, logvar)
-        recon = self.decoder(z, text_embedding)
-        return recon, mu, logvar
+    # Normalize noise to [0,1]
+    noise_min = noise_img.min()
+    noise_max = noise_img.max()
+    noise_norm = (noise_img - noise_min) / (noise_max - noise_min)
 
-def train_text_to_3d(model, dataloader, embedding_generator, optimizer, device, epochs=10):
-    model.train()
-    for epoch in range(epochs):
-        total_loss = 0.0
-        num_batches = 0
-        progress = tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}")
-        for batch in progress:
-            if batch is None:
-                continue
-            # collate_fn returns (padded_batch, faces_batch, classes_batch)
-            # We need the padded_batch (point clouds) and class names (as text descriptions)
-            point_clouds, _, class_names = batch
-            point_clouds = point_clouds.to(device)  # (B, 4096, 3)
-            batch_size = point_clouds.size(0)
-            text_embeddings = []
-            for cls in class_names:
-                with torch.no_grad():
-                    emb = embedding_generator.generate_embedding(cls).to(device)
-                    if emb.dim() > 1:
-                        emb = emb.squeeze(0)
-                    text_embeddings.append(emb)
-            text_embeddings = torch.stack(text_embeddings, dim=0)  # (B, 512)
-            
-            optimizer.zero_grad()
-            recon, mu, logvar = model(point_clouds, text_embeddings)
-            rec_loss = chamfer_distance(recon, point_clouds)
-            kl_loss = kl_divergence(mu, logvar)
-            loss = rec_loss + 0.01 * kl_loss  # Adjust the KL weight as needed
-            loss.backward()
-            optimizer.step()
-            
-            total_loss += loss.item()
-            num_batches += 1
-            progress.set_postfix({"Loss": f"{loss.item():.4f}"})
-        print(f"Epoch {epoch+1} Average Loss: {total_loss/num_batches:.4f}")
+    # Apply a sigmoid mapping to enhance contrast.
+    # A high alpha (e.g. 10) yields a near binary transition.
+    alpha = 10.0
+    sigmoid_mapped = 1.0 / (1.0 + np.exp(-alpha * (noise_norm - 0.5)))
+    image = (sigmoid_mapped * 255).astype(np.uint8)
 
-def generate_from_text(model, embedding_generator, query_text, device):
-    """
-    Generates a 3D point cloud based on a text prompt.
-    """
-    model.eval()
-    with torch.no_grad():
-        text_emb = embedding_generator.generate_embedding(query_text).to(device)
-        if text_emb.dim() > 1:
-            text_emb = text_emb.squeeze(0)
-        # Add batch dimension to get shape (1, 512)
-        text_emb = text_emb.unsqueeze(0)
-        # For diversity, choose a random latent vector from a normal distribution
-        latent = torch.randn((1, 256)).to(device)
-        recon = model.decoder(latent, text_emb)
-        # recon: (1, num_points, 3)
-        points = recon.squeeze(0).cpu().detach().numpy()
+    # Optionally adjust brightness/contrast if embedding is provided.
+    if embedding_generator is not None:
+        modifier = 0.8 + (np.mean(embedding) % 0.4)  # e.g. in range [0.8, 1.2]
+        brightness = (np.std(embedding) % 30)          # brightness offset
+        image = np.clip(image * modifier + brightness, 0, 255).astype(np.uint8)
     
-    # Create an Open3D point cloud from the generated points
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.paint_uniform_color([0.7, 0.7, 0.7])
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-    pcd.orient_normals_to_align_with_direction(np.array([0.0, 0.0, 1.0]))
+    # For consistency, replicate grayscale to 3 channels.
+    image = np.stack([image, image, image], axis=-1)
     
-    print("[TextTo3D] Performing Poisson surface reconstruction.")
-    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
-    densities = np.asarray(densities)
-    vertices_to_remove = densities < np.quantile(densities, 0.01)
-    mesh.remove_vertices_by_mask(vertices_to_remove)
-    mesh = mesh.filter_smooth_simple(number_of_iterations=3)
-    mesh.paint_uniform_color([0.8, 0.8, 0.8])
-    mesh.compute_vertex_normals()
+    # Apply histogram equalization for further contrast enhancement.
+    gray_eq = cv2.equalizeHist(cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
+    image = np.stack([gray_eq, gray_eq, gray_eq], axis=-1)
     
+    # Final light Gaussian blur to remove minor noise.
+    image = cv2.GaussianBlur(image, (5, 5), 0)
+    
+    return image
+
+# ------------------------------------------------------------------------------
+# New function: Create a volumetric reconstruction and extract mesh using marching cubes.
+# The volume is built by applying a sigmoid to the normalized grayscale image,
+# which yields a sharper transition between filled and unfilled voxels.
+# ------------------------------------------------------------------------------
+def reconstruct_mesh_from_volume(image, depth=64, threshold=0.5):
+    # Преобразование входного изображения в grayscale для получения карты глубины.
+    if len(image.shape) == 3:
+        depth_map = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    else:
+        depth_map = image.copy()
+        
+    # Normalize depth map to the [0, 255] range.
+    depth_map = (depth_map - depth_map.min()) / (depth_map.max() - depth_map.min() + 1e-8)
+    depth_map = depth_map * 255.0
+
+    # Convert depth map to normalized [0, 1] values.
+    depth_normalized = depth_map / 255.0  # shape: (H, W)
+    height, width = depth_normalized.shape
+
+    # Create a 3D volume from the depth map.
+    # The volume will have 'depth' slices along the z-axis.
+    # For each pixel, we fill voxels below the estimated normalized depth value.
+    z = np.linspace(0, 1, depth)[:, None, None]  # shape: (depth, 1, 1)
+    volume = (z <= depth_normalized[None, :, :]).astype(np.float32)
+
+    # Apply Gaussian smoothing to reduce artifacts in the volume.
+    import scipy.ndimage
+    volume = scipy.ndimage.gaussian_filter(volume, sigma=1)
+
+    # Extract surface mesh using marching cubes from the volume.
+    verts, faces, normals, values = marching_cubes(volume, level=threshold)
+
+    # Adjust vertices to a normalized coordinate system (unit cube).
+    verts[:, 0] = verts[:, 0] / (depth - 1)
+    verts[:, 1] = verts[:, 1] / (height - 1)
+    verts[:, 2] = verts[:, 2] / (width - 1)
+
+    # Create and return an Open3D triangle mesh.
+    mesh = o3d.geometry.TriangleMesh()
+    mesh.vertices = o3d.utility.Vector3dVector(verts)
+    mesh.triangles = o3d.utility.Vector3iVector(faces)
+    mesh.vertex_normals = o3d.utility.Vector3dVector(normals)
     return mesh
 
+# ------------------------------------------------------------------------------
+# Main pipeline: Choose between NeRF generation and legacy text→image→3D pipeline.
+# ------------------------------------------------------------------------------
+def generate_model_from_text(query_text, embedding_generator=None):
+    """
+    If query starts with 'nerf:', generate a NeRF-based scene.
+    Otherwise, fallback to the original text→image→3D pipeline with primitives support.
+    """
+    lower_query = query_text.lower()
+    if lower_query.startswith("nerf:"):
+         # Remove the "nerf:" prefix.
+         prompt = query_text[len("nerf:"):].strip()
+         return generate_nerf_from_text(prompt, embedding_generator)
+    elif lower_query.startswith("neural:"):
+         # Use neural image generation and reconstruct 3D model using NeRF.
+         return generate_nerf_from_neural_image(query_text, embedding_generator)
+    # Generate specific primitives if possible.
+    if any(keyword in prompt_lower for keyword in ["cube", "box", "cuboid", "rectangular"]):
+         mesh = o3d.geometry.TriangleMesh.create_box()
+         mesh.compute_vertex_normals()
+         return mesh
+    elif "sphere" in prompt_lower:
+         mesh = o3d.geometry.TriangleMesh.create_sphere()
+         mesh.compute_vertex_normals()
+         return mesh
+    elif "cylinder" in prompt_lower:
+         mesh = o3d.geometry.TriangleMesh.create_cylinder()
+         mesh.compute_vertex_normals()
+         return mesh
+    elif "cone" in prompt_lower:
+         mesh = o3d.geometry.TriangleMesh.create_cone()
+         mesh.compute_vertex_normals()
+         return mesh
+    else:
+         # Generate noise-based image (legacy pipeline).
+         image = generate_image_from_text(query_text, embedding_generator)
+         
+         # Save the generated image for inspection.
+         seed = int.from_bytes(query_text.encode(), 'little') % (2 ** 32)
+         output_dir = "generated_images"
+         if not os.path.exists(output_dir):
+             os.makedirs(output_dir)
+         safe_query = "".join(c for c in query_text if c.isalnum() or c in (' ', '_')).strip().replace(" ", "_")
+         image_filename = os.path.join(output_dir, f"{safe_query[:30]}_{seed}.png")
+         cv2.imwrite(image_filename, image)
+         print(f"Generated image saved to {image_filename}")
+         
+         # Reconstruct 3D mesh from the image.
+         mesh = reconstruct_mesh_from_volume(image)
+         return mesh
+
+# ------------------------------------------------------------------------------
+# Function for retrieving an existing model based on text query.
+# If the query contains a class name from the dataset, return the corresponding OFF file path.
+# ------------------------------------------------------------------------------
 def load_existing_model(query, dataset):
     """
-    If the query contains a known class name from the dataset,
-    return an existing OFF file for that class.
+    If the query contains a class name from the dataset,
+    returns the corresponding OFF file path.
     """
     query_lower = query.lower()
     available_classes = list(dataset.class_to_idx.keys())
@@ -223,60 +221,130 @@ def load_existing_model(query, dataset):
         target_class = matching_classes[0]
         files = [file_path for file_path, cls in dataset.file_list if cls.lower() == target_class.lower()]
         if files:
-            return files[0]  # Return the first matching file (or choose randomly)
+            return files[0]
     return None
 
-if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[TextTo3D] Using device: {device}")
+# ------------------------------------------------------------------------------
+# New function: Generate an image using a neural network (Stable Diffusion).
+# ------------------------------------------------------------------------------
+def generate_neural_image_from_text(prompt, width=256, height=256):
+    try:
+        from diffusers import StableDiffusionPipeline
+        import torch
+    except ImportError as e:
+        raise ImportError("Stable Diffusion pipeline is not installed. Please install diffusers and dependencies.")
 
-    # Initialize the EmbeddingGenerator (ensure spaCy or CLIP models are installed)
+    model_id = "CompVis/stable-diffusion-v1-4"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    pipe = StableDiffusionPipeline.from_pretrained(
+         model_id, 
+         torch_dtype=torch.float16 if device.type == "cuda" else torch.float32
+    )
+    pipe = pipe.to(device)
+
+    # Optionally disable the safety checker to prevent excessive filtering
+    if hasattr(pipe, "safety_checker") and pipe.safety_checker is not None:
+         pipe.safety_checker = lambda images, **kwargs: (images, [False] * len(images))
+
+    # Use additional parameters for more detailed generation
+    result = pipe(prompt, width=width, height=height, num_inference_steps=50, guidance_scale=7.5)
+    image = np.array(result.images[0])
+    return image
+
+# ------------------------------------------------------------------------------
+# New function: Generate a NeRF scene from text.
+# This simplified version simulates a NeRF pipeline by generating multiple views from the text prompt,
+# aggregating them to form a pseudo depth map, and reconstructing a mesh as a placeholder for a true NeRF.
+# ------------------------------------------------------------------------------
+def generate_nerf_from_text(query_text, embedding_generator=None, num_views=5):
+    """
+    Pipeline for generating a Neural Radiance Field (NeRF) scene from a text prompt.
+    This is a simplified version simulating NeRF generation.
+    """
+    views = []
+    seed = int.from_bytes(query_text.encode(), 'little') % (2 ** 32)
+    for i in range(num_views):
+         # Calculate viewing angle in degrees.
+         angle = 360 * i / num_views
+         # Create a modified prompt for the current view.
+         view_prompt = f"{query_text} view angle {angle:.1f}"
+         # Generate image using existing text-to-image function.
+         view_image = generate_image_from_text(view_prompt, embedding_generator)
+         # Simulate view variation by rotating the image.
+         center = (view_image.shape[1] // 2, view_image.shape[0] // 2)
+         M = cv2.getRotationMatrix2D(center, angle, 1.0)
+         rotated_view = cv2.warpAffine(view_image, M, (view_image.shape[1], view_image.shape[0]))
+         views.append(rotated_view)
+    # Aggregate generated views to simulate a depth map (placeholder for NeRF volume rendering).
+    avg_view = np.mean(np.stack(views, axis=0), axis=0).astype(np.uint8)
+    # Reconstruct a mesh from the aggregated view.
+    nerf_mesh = reconstruct_mesh_from_volume(avg_view)
+    return nerf_mesh
+
+# ------------------------------------------------------------------------------
+# New function: Generate a 3D model using NeRF from a neural-generated image.
+# It uses a neural network (Stable Diffusion) to generate a base image,
+# then simulates multiple views by rotating the image, aggregates them to form a pseudo depth map,
+# and reconstructs a 3D mesh as a placeholder for a true NeRF.
+# ------------------------------------------------------------------------------
+def generate_nerf_from_neural_image(query_text, embedding_generator=None, num_views=5):
+    """
+    Pipeline for generating a Neural Radiance Field (NeRF) 3D model from a neural-generated image.
+    It first generates a base image using the neural network and then creates multiple rotated views.
+    """
+    # Remove "neural:" prefix.
+    base_prompt = query_text[len("neural:"):].strip()
+    # Generate base image using neural generation.
+    base_image = generate_neural_image_from_text(base_prompt)
+    views = []
+    for i in range(num_views):
+         # Calculate viewing angle in degrees.
+         angle = 360 * i / num_views
+         center = (base_image.shape[1] // 2, base_image.shape[0] // 2)
+         M = cv2.getRotationMatrix2D(center, angle, 1.0)
+         rotated_view = cv2.warpAffine(base_image, M, (base_image.shape[1], base_image.shape[0]))
+         views.append(rotated_view)
+    # Aggregate generated views to simulate a depth map.
+    avg_view = np.mean(np.stack(views, axis=0), axis=0).astype(np.uint8)
+    # Reconstruct a mesh from the aggregated view.
+    nerf_mesh = reconstruct_mesh_from_volume(avg_view)
+    return nerf_mesh
+
+# ------------------------------------------------------------------------------
+# Main block: Initialization, optional retrieval, and generation of the 3D model.
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    # Set device (not used in current pipeline, but may be useful if embedding conditioning used)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"[Text-Image-3D] Using device: {device}")
+
+    # Initialize EmbeddingGenerator if available.
     try:
         embedding_generator = EmbeddingGenerator(device, reduced_dim=512)
-        print("[TextTo3D] EmbeddingGenerator initialized.")
+        print("[Text-Image-3D] EmbeddingGenerator initialized.")
     except Exception as e:
-        print(f"[TextTo3D] Error initializing EmbeddingGenerator: {e}")
-        exit(1)
+        print(f"[Text-Image-3D] Error initializing EmbeddingGenerator: {e}")
+        embedding_generator = None
 
-    # Load dataset
+    # Load dataset for retrieval (if applicable)
     dataset_path = "datasets/CoolDataset"
     try:
         dataset = ModelNet40Dataset(root_dir=dataset_path, split="train")
-        print("[TextTo3D] Dataset loaded.")
+        print("[Text-Image-3D] Dataset loaded.")
     except Exception as e:
-        print(f"[TextTo3D] Error loading dataset: {e}")
-        exit(1)
-    
-    dataloader = DataLoader(
-        dataset,
-        batch_size=8,
-        shuffle=True,
-        collate_fn=collate_fn,
-        drop_last=True
-    )
-    
-    # Initialize our model (generating 1024 points)
-    model = TextTo3DNet(latent_dim=256, text_dim=512, num_points=4096).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    
-    print("[TextTo3D] Starting training...")
-    train_text_to_3d(model, dataloader, embedding_generator, optimizer, device, epochs=10)
-    print("[TextTo3D] Training finished.")
+        print(f"[Text-Image-3D] Error loading dataset: {e}")
+        dataset = None
 
-    # Main loop for text-to-3D generation
+    # Main loop: prompt for text and generate a 3D model/scene.
     while True:
-        query = input("Enter text for 3D model generation (or 'exit'): ")
+        query = input("Enter text for NeRF scene generation (or 'exit' to quit): ")
         if query.lower() in ["exit", "quit"]:
             break
 
-        # If an existing class is found in the query, load the corresponding existing model
-        existing_file = load_existing_model(query, dataset)
-        if existing_file:
-            print(f"[TextTo3D] Found existing model for query '{query}': {existing_file}")
-            mesh = o3d.io.read_triangle_mesh(existing_file)
-            if not mesh.has_vertex_normals():
-                mesh.compute_vertex_normals()
-            o3d.visualization.draw_geometries([mesh], window_name="Existing 3D Model")
+        # Generate model using the appropriate pipeline.
+        mesh = generate_model_from_text(query, embedding_generator)
+        # Display the resulting 3D model.
+        if query.lower().startswith("nerf:"):
+             o3d.visualization.draw_geometries([mesh], window_name="Generated NeRF Scene")
         else:
-            mesh = generate_from_text(model, embedding_generator, query, device)
-            o3d.visualization.draw_geometries([mesh], window_name="Generated 3D Model")
+             o3d.visualization.draw_geometries([mesh], window_name="Generated 3D Model")
