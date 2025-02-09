@@ -79,6 +79,9 @@ def generate():
     parser.add_argument("--mode", type=str, default='generate', help="Mode of operation: 'generate'")
     
     args = parser.parse_args()
+    # Override checkpoint parameter to always use "vae_gan_test.pth"
+    args.checkpoint = "vae_gan_test.pth"
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     scene_filename = newgen(args=args, device=device, need_visualisation=False)
