@@ -1,9 +1,3 @@
-'''
-файл бэкэнд-части сайта
-
-'''
-
-
 from flask import Flask, request, render_template, send_from_directory, redirect, url_for, jsonify
 import os
 import torch
@@ -90,28 +84,6 @@ def generate():
     model_url = url_for('download_file', filename=filename)
     print(model_url)
     return jsonify({'model_url': model_url})
-    '''user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Вы должны быть авторизованы для генерации моделей.'}), 403
-
-    data = request.json
-    text = data.get('text', '')
-    if not text:
-        return jsonify({'error': 'Текстовое поле пустое. Пожалуйста, введите текст.'}), 400
-    print(f"[APP] Получен запрос на генерацию модели для текста: {text}")
-    
-    embedding = embedding_generator.generate_embedding(text).squeeze()
-    
-    with torch.no_grad():
-        noise = torch.randn(1, input_dim).to(device)
-        generated_embedding = generator(noise).cpu().numpy().squeeze()
-    
-    print("[APP] Генерируем 3D модель на основе эмбеддинга...")
-    scene_filename = generate_3d_scene_from_embedding(generated_embedding, text)
-    
-    filename = os.path.basename(scene_filename)
-    model_url = url_for('download_file', filename=filename)
-    return jsonify({'model_url': model_url})'''
 
 @app.route(f'/static/models/<filename>')
 def download_file(filename):
