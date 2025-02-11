@@ -393,7 +393,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
@@ -651,7 +651,7 @@
       pointLight.position.set(10, 10, 10);
       scene.add(pointLight);
 
-      const loader = new THREE.PLYLoader();
+      const loader = new THREE.OBJLoader();
       loader.load(
         url,
         function (geometry) {
@@ -706,7 +706,7 @@
                 if (url) {
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = 'model.ply'; // Укажите имя файла
+                    link.download = 'model.obj'; // Укажите имя файла
                     link.click();
                 } else {
                     alert('Модель не найдена!');
@@ -719,7 +719,7 @@
           console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
         },
         function (error) {
-          console.error('Ошибка при загрузке PLY файла:', error);
+          console.error('Ошибка при загрузке OBJ файла:', error);
           errorMessage.innerText = t.genErrorLoad;
           callback(false);
         }

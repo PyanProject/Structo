@@ -1,3 +1,4 @@
+// Локализация текстов
 const texts = {
   en: {
     headerTitle: "Modelit",
@@ -61,9 +62,11 @@ const texts = {
 
 let currentLang = 'ru';
 
+// Устанавливаем язык и обновляем текст на странице, а также проверяем авторизацию пользователя
 function setLanguage(lang) {
   currentLang = lang;
   const t = texts[lang];
+  
   document.getElementById('header-title').textContent = t.headerTitle;
   document.getElementById('account-link').textContent = t.account;
   document.getElementById('search-input').placeholder = t.placeholder;
@@ -72,7 +75,7 @@ function setLanguage(lang) {
   document.getElementById('prompt-guide').textContent = t.promptGuide;
   document.getElementById('result-box').textContent = t.resultBox;
   document.querySelector('.footer').textContent = t.footer;
-
+  
   document.getElementById('modal-title').textContent = t.modalTitleLogin;
   document.getElementById('login-username').placeholder = t.loginPlaceholderUser;
   document.getElementById('login-password').placeholder = t.loginPlaceholderPass;
@@ -80,50 +83,62 @@ function setLanguage(lang) {
   document.getElementById('forgot-link').textContent = t.forgotPass;
   document.getElementById('login-button').textContent = t.loginBtn;
   document.getElementById('switch-to-register').textContent = t.registerBtn;
-
+  
   document.getElementById('register-username').placeholder = t.regPlaceholderUser;
   document.getElementById('register-password').placeholder = t.regPlaceholderPass;
   document.getElementById('register-password-confirm').placeholder = t.regPlaceholderPass2;
   document.getElementById('register-email').placeholder = t.regPlaceholderEmail;
   document.getElementById('register-button').textContent = t.registerDo;
   document.getElementById('switch-to-login').textContent = t.registerBack;
+  
+  // Проверка статуса авторизации
+  fetch('/auth_status')
+    .then(response => response.json())
+    .then(data => {
+      const accountLink = document.getElementById('account-link');
+      if (data.authenticated) {
+        accountLink.textContent = data.username; // Если пользователь авторизован, отображаем его имя
+        accountLink.onclick = toggleUserMenu;     // Привязываем переключение меню пользователя
+      } else {
+        accountLink.textContent = t.account;        // Если не авторизован, отображаем "Аккаунт"
+        accountLink.onclick = openModal;            // Привязываем открытие модального окна
+      }
+    })
+    .catch(error => console.error('Ошибка проверки авторизации:', error));
 }
 
-function openModal() {
-  const modalOverlay = document.getElementById('modal-overlay');
+// Функции для переключения между формами входа и регистрации
+function showLogin() {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
   const modalTitle = document.getElementById('modal-title');
+  loginForm.style.display = 'block';
+  registerForm.style.display = 'none';
+  modalTitle.textContent = texts[currentLang].modalTitleLogin;
+}
 
+function showRegister() {
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const modalTitle = document.getElementById('modal-title');
+  loginForm.style.display = 'none';
+  registerForm.style.display = 'block';
+  modalTitle.textContent = texts[currentLang].modalTitleRegister;
+}
+
+// Функция открытия модального окна (выводится форма входа по умолчанию)
+function openModal() {
+  const modalOverlay = document.getElementById('modal-overlay');
   modalOverlay.style.display = 'flex';
   showLogin();
-
-  function showLogin() {
-    loginForm.style.display = 'block';
-    registerForm.style.display = 'none';
-    modalTitle.textContent = texts[currentLang].modalTitleLogin;
-  }
-
-  function showRegister() {
-    loginForm.style.display = 'none';
-    registerForm.style.display = 'block';
-    modalTitle.textContent = texts[currentLang].modalTitleRegister;
-  }
 }
 
 window.onload = function() {
   setLanguage('ru');
 
   const modalOverlay = document.getElementById('modal-overlay');
-  const loginForm = document.getElementById('login-form');
-  const registerForm = document.getElementById('register-form');
-  const modalTitle = document.getElementById('modal-title');
-  
-  function openModal() {
-    modalOverlay.style.display = 'flex';
-    showLogin();
-  }
 
+  // Функция закрытия модального окна при клике вне формы
   function closeModal() {
     modalOverlay.style.display = 'none';
   }
@@ -134,29 +149,16 @@ window.onload = function() {
     }
   });
 
+  // Назначаем переключение между формами регистрации и входа
   document.getElementById('switch-to-register').addEventListener('click', showRegister);
   document.getElementById('switch-to-login').addEventListener('click', showLogin);
 
-  function showLogin() {
-    loginForm.style.display = 'block';
-    registerForm.style.display = 'none';
-    modalTitle.textContent = texts[currentLang].modalTitleLogin;
-  }
-
-  function showRegister() {
-    loginForm.style.display = 'none';
-    registerForm.style.display = 'block';
-    modalTitle.textContent = texts[currentLang].modalTitleRegister;
-  }
-
+  // Элементы для генерации 3D модели
   const searchInput = document.getElementById('search-input');
   const errorMessage = document.getElementById('error-message');
   const resultBox = document.getElementById('result-box');
-  const downloadLink = document.getElementById('download-link');
-  const downloadUrl = document.getElementById('download-url');
   const searchBar = document.getElementById('search-bar');
   const generateButton = document.getElementById('generate-button');
-  const button = document.getElementById('download-button');
 
   generateButton.addEventListener('click', () => {
     const text = searchInput.value.trim();
@@ -167,8 +169,9 @@ window.onload = function() {
     }
   });
 
-  let modelDownloadUrl = ''; // Ссылка на модель
+  let modelDownloadUrl = ''; // Ссылка на сгенерированную модель
 
+  // Функция генерации модели
   function generateModel() {
     const t = texts[currentLang];
     const text = searchInput.value.trim();
@@ -191,8 +194,8 @@ window.onload = function() {
           if (resultBox) resultBox.textContent = t.genErrorFail;
           return;
         }
-        const modelUrl = data.model_url;  // /static/models/model.ply
-        visualizeModel(modelUrl, () => {
+        modelDownloadUrl = data.model_url; // Сохраняем URL модели для скачивания
+        visualizeModel(modelDownloadUrl, () => {
           if (errorMessage) errorMessage.innerText = t.genSuccess;
         });
       })
@@ -202,10 +205,10 @@ window.onload = function() {
       });
   }
 
-
+  // Функция скачивания модели (вызывается по кнопке, созданной в visualizeModel)
   function downloadModel() {
     if (modelDownloadUrl) {
-      window.location.href = modelDownloadUrl; // Скачивание
+      window.location.href = modelDownloadUrl;
     } else {
       alert('Модель ещё не сгенерирована!');
     }
@@ -213,7 +216,7 @@ window.onload = function() {
 
   searchInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-      e.preventDefault(); 
+      e.preventDefault();
       generateModel();
     }
   });
@@ -224,6 +227,7 @@ window.onload = function() {
     }
   });
 
+  // Функция визуализации 3D модели с использованием THREE.OBJLoader
   function visualizeModel(url, callback) {
     const t = texts[currentLang];
     resultBox.innerHTML = '';
@@ -243,14 +247,14 @@ window.onload = function() {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(1,1,1).normalize();
+    directionalLight.position.set(1, 1, 1).normalize();
     scene.add(directionalLight);
 
-    const pointLight = new THREE.PointLight(0xffffff,1);
-    pointLight.position.set(10,10,10);
+    const pointLight = new THREE.PointLight(0xffffff, 1);
+    pointLight.position.set(10, 10, 10);
     scene.add(pointLight);
 
-    const loader = new THREE.PLYLoader();
+    const loader = new THREE.OBJLoader();
     loader.load(
       url,
       geometry => {
@@ -269,7 +273,7 @@ window.onload = function() {
         const mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
 
-        camera.position.set(0,0,5);
+        camera.position.set(0, 0, 5);
         mesh.scale.multiplyScalar(1);
         geometry.computeBoundingBox();
         const center = new THREE.Vector3();
@@ -286,7 +290,7 @@ window.onload = function() {
         }
         animate();
 
-        // Создаём кнопку скачивания
+        // Создаём кнопку скачивания модели
         const downloadButton = document.createElement('button');
         downloadButton.id = 'download-button';
         downloadButton.style.position = 'absolute';
@@ -308,24 +312,66 @@ window.onload = function() {
           if (url) {
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'model.ply'; 
+            link.download = 'model.obj';
             link.click();
           } else {
             alert('Модель не найдена!');
           }
         };
         resultBox.appendChild(downloadButton);
-
         callback(true);
       },
       function (xhr) {
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% загружено' );
+        console.log((xhr.loaded / xhr.total * 100) + '% загружено');
       },
       function (error) {
-        console.error('Ошибка при загрузке PLY файла:', error);
+        console.error('Ошибка при загрузке OBJ файла:', error);
         errorMessage.innerText = t.genErrorLoad;
         callback(false);
       }
     );
   }
 };
+
+// Функция входа (авторизации)
+function submitLogin() {
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const rememberMe = document.getElementById('remember-me').checked;
+
+  fetch('/auth', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'login',
+      username: username,
+      password: password,
+      remember_me: rememberMe,
+    }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Вы успешно вошли');
+        updateUserUI(username);
+        document.getElementById('modal-overlay').style.display = 'none';
+      } else {
+        alert('Неверный логин или пароль');
+      }
+    })
+    .catch(error => console.error('Ошибка:', error));
+}
+
+// Обновление интерфейса после авторизации (например, отображение имени пользователя)
+function updateUserUI(username) {
+  const accountLink = document.getElementById('account-link');
+  accountLink.textContent = username;
+  // Дополнительное обновление интерфейса можно добавить здесь
+}
+
+// Пример функции переключения пользовательского меню (dropdown)
+function toggleUserMenu() {
+  console.log('Переключение пользовательского меню');
+}

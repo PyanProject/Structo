@@ -236,8 +236,8 @@ def generate(args, device, need_visualisation=True):
     mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
     mesh_vis.visual.face_colors = [200, 200, 200, 255]
     
-    # Экспортируем в .ply
-    mesh_vis.export(args.output, file_type='ply')
+    # Экспортируем в .obj
+    mesh_vis.export(args.output, file_type='obj')
     print(f"3D model generated and saved to {args.output}")
     
     if need_visualisation:
@@ -255,7 +255,7 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-3, help="LR")
     parser.add_argument("--checkpoint", type=str, default="models/checkpoints/vae_gan_test.pth", help="Checkpoint file")
     parser.add_argument("--voxel_size", type=int, default=64, help="Grid resolution")
-    parser.add_argument("--output", type=str, default="model.ply", help="Output PLY file")
+    parser.add_argument("--output", type=str, default="model.obj", help="Output OBJ file")
     parser.add_argument("--lambda_adv", type=float, default=0.001, help="Weight factor for adv loss")
     parser.add_argument("--prompt", type=str, default=None, help="Text prompt")
     parser.add_argument("--cond_dim", type=int, default=512, help="Cond vector size")

@@ -224,16 +224,26 @@ body {
   box-sizing: border-box;
 }
 
+/* Добавляем отсутствующий блок из первого CSS */
+.version-info {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 0;
+  color: #999;
+  font-size: 0.7rem;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  right:0;
-  bottom:0;
+  right: 0;
+  bottom: 0;
   background: rgba(0,0,0,0.5);
   display: none;
-  align-items:center;
-  justify-content:center;
+  align-items: center;
+  justify-content: center;
   z-index: 9999;
 }
 
@@ -252,8 +262,8 @@ body {
 }
 
 .modal h2 {
-  margin-top:0;
-  margin-bottom:20px;
+  margin-top: 0;
+  margin-bottom: 20px;
   text-align: center;
 }
 
@@ -262,54 +272,54 @@ body {
 .modal input[type="email"] {
   width: 100%;
   padding: 8px;
-  margin-bottom:10px;
+  margin-bottom: 10px;
   border: none;
   background: rgba(255,255,255,0.1);
   color: #fff;
-  border-radius:5px;
-  outline:none;
+  border-radius: 5px;
+  outline: none;
 }
 
 .modal .options-row {
-  display:flex;
-  align-items:center;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom:10px;
+  margin-bottom: 10px;
 }
 
 .modal .remember {
-  display:flex;
-  align-items:center;
-  font-size:0.9rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
 }
 
 .modal .remember input[type="checkbox"] {
-  margin-right:5px;
+  margin-right: 5px;
 }
 
 .modal .forgot-link a {
   color: #6ab4ff;
-  text-decoration:none;
-  font-size:0.9rem;
+  text-decoration: none;
+  font-size: 0.9rem;
 }
 
 .modal .forgot-link a:hover {
-  text-decoration:underline;
+  text-decoration: underline;
 }
 
 .modal .actions {
-  text-align:center;
-  margin-top:20px;
+  text-align: center;
+  margin-top: 20px;
 }
 
 .modal .actions button {
   margin: 0 5px;
   padding: 10px 15px;
   background: rgba(255,255,255,0.1);
-  border:none;
-  color:#fff;
-  cursor:pointer;
-  border-radius:5px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 5px;
 }
 
 .modal .actions button:hover {
@@ -361,7 +371,8 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-.content h1, .content h2 {
+.content h1,
+.content h2 {
   margin: 0 0 20px 0;
   color: #fff;
   font-size: 1.8rem;
