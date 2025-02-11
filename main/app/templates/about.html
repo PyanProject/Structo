@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>О нас</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="static\pictures\mfavicon.ico?v=1">
+    <link rel="icon" type="image/png" sizes="16x16" href="static\pictures\mfavicon.ico?v=1">
+    <link rel="icon" type="image/x-icon" href="static\pictures\mfavicon.ico?v=1">
+
+</head>
+<body>
+    <div class="top-header" id="header-title">О нас</div>
+    <div class="content">
+        <h1>О нас</h1>
+        <p>Мы компания, занимающаяся генерацией 3D моделей на основе текстовых описаний.</p>
+
+        <h2>Контактная информация</h2>
+        <ul>
+            <li>Email: support@pyan.com</li>
+            <li>Телефон: +7 (123) 456-7890</li>
+            <li>Адрес: г. Москва, ул. Примерная, д. 42</li>
+        </ul>
+        <a href="{{ url_for('main.index') }}" class="button">Вернуться на главную</a>
+    </div>
+
+    <div class="footer">&copy; Pyan Inc. 2025</div>
+    <div class="version-info">alpha v.1.4</div>
+</body>
+</html>
