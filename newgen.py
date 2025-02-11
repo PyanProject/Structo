@@ -8,6 +8,7 @@ import os
 import argparse
 from skimage import measure
 import clip
+from scipy.ndimage import gaussian_filter
 
 # Dataset for loading .off files from the custom dataset
 class TestVoxelDataset(Dataset):
@@ -173,6 +174,19 @@ def encode_prompt(prompt, device):
         prompt_embedding = model_clip.encode_text(tokens)
     return prompt_embedding
 
+# Compute IoU between binary occupancy voxel grids
+def compute_iou(recon, target, threshold=0.5):
+    """
+    Compute IoU between binary occupancy voxel grids.
+    recon, target shapes: (batch_size, 1, voxel_size, voxel_size, voxel_size)
+    """
+    binary_recon = (recon > threshold).float()
+    binary_target = (target > threshold).float()
+    intersection = (binary_recon * binary_target).view(binary_recon.size(0), -1).sum(dim=1)
+    union = ((binary_recon + binary_target) > 0).float().view(binary_recon.size(0), -1).sum(dim=1)
+    iou = intersection / (union + 1e-6)
+    return iou.mean()
+
 # Training procedure for CVAE-GAN on custom dataset
 def train(args, device):
     dataset = TestVoxelDataset(root_dir=args.dataset, voxel_size=args.voxel_size)
@@ -186,7 +200,7 @@ def train(args, device):
     discriminator = Discriminator(args.voxel_size).to(device)
     
     optimizer_G = optim.Adam(cvae.parameters(), lr=args.lr)
-    optimizer_D = optim.Adam(discriminator.parameters(), lr=args.lr)
+    optimizer_D = optim.Adam(discriminator.parameters(), lr=args.lr * 0.1)
     
     cvae.train()
     discriminator.train()
@@ -197,6 +211,12 @@ def train(args, device):
     
     for epoch in range(args.epochs):
         epoch_loss = 0.0
+        acc_real_total = 0.0
+        acc_fake_total = 0.0
+        acc_fake_forG_total = 0.0
+        acc_iou_total = 0.0
+        batch_count = 0
+
         for voxels, prompts in dataloader:
             voxels = voxels.to(device)
             tokens = clip.tokenize(prompts).to(device)
@@ -205,7 +225,7 @@ def train(args, device):
             
             # Train Discriminator
             optimizer_D.zero_grad()
-            real_labels = torch.ones(voxels.size(0), 1, device=device)
+            real_labels = torch.ones(voxels.size(0), 1, device=device) * 0.9  # label smoothing for real samples
             fake_labels = torch.zeros(voxels.size(0), 1, device=device)
             
             recon, mu, logvar = cvae(voxels, cond)
@@ -217,6 +237,10 @@ def train(args, device):
             loss_D.backward()
             optimizer_D.step()
             
+            # Calculate discriminator accuracy for real and fake samples
+            acc_real = (D_real >= 0.5).float().mean().item()  # accuracy for real samples
+            acc_fake = (D_fake < 0.5).float().mean().item()     # accuracy for fake samples
+            
             # Train Generator (VAE part with adversarial loss)
             optimizer_G.zero_grad()
             recon, mu, logvar = cvae(voxels, cond)
@@ -227,8 +251,25 @@ def train(args, device):
             loss_G_total.backward()
             optimizer_G.step()
             
+            # Calculate generator accuracy: percentage of generated (fake) samples fooling the discriminator
+            acc_fake_forG = (D_fake_forG >= 0.5).float().mean().item()
+            
+            # Compute reconstruction IoU as quality metric between generated recon and original voxels
+            iou = compute_iou(recon, voxels)
+            
+            # Accumulate metrics per batch
+            acc_real_total += acc_real
+            acc_fake_total += acc_fake
+            acc_fake_forG_total += acc_fake_forG
+            acc_iou_total += iou.item()
+            batch_count += 1
+            
             epoch_loss += loss_G_total.item()
-        print(f"Epoch [{epoch+1}/{args.epochs}], Loss: {epoch_loss/len(dataset):.4f}")
+        print(f"Epoch [{epoch+1}/{args.epochs}], Loss: {epoch_loss/len(dataset):.4f}, "
+              f"Discriminator Acc (Real): {acc_real_total/batch_count:.4f}, "
+              f"Discriminator Acc (Fake): {acc_fake_total/batch_count:.4f}, "
+              f"Generator Acc: {acc_fake_forG_total/batch_count:.4f}, "
+              f"IoU: {acc_iou_total/batch_count:.4f}")
     
     checkpoint = {"cvae_state_dict": cvae.state_dict()}
     torch.save(checkpoint, args.checkpoint)
@@ -253,6 +294,8 @@ def generate(args, device, need_visualisation=True):
     with torch.no_grad():
         voxel_out = cvae.decoder(z, cond)  # (1, 1, voxel_size, voxel_size, voxel_size)
     voxel_grid = voxel_out.squeeze().cpu().numpy()
+    # Pre-smooth voxel grid for better connectivity using a Gaussian filter
+    voxel_grid = gaussian_filter(voxel_grid, sigma=1)
     
     # Determine threshold level for marching cubes
     v_min, v_max = voxel_grid.min(), voxel_grid.max()
@@ -288,13 +331,15 @@ def main():
     parser.add_argument("--checkpoint", type=str, default="vae_gan_test.pth", help="Checkpoint file path")
     parser.add_argument("--voxel_size", type=int, default=64, help="Voxel grid resolution")
     parser.add_argument("--output", type=str, default="model.obj", help="Output OBJ file for generation")
-    parser.add_argument("--lambda_adv", type=float, default=0.001, help="Weight factor for adversarial loss")
+    parser.add_argument("--lambda_adv", type=float, default=0.0001, help="Weight factor for adversarial loss")
     parser.add_argument("--prompt", type=str, default=None, help="Text prompt for conditional 3D generation")
     parser.add_argument("--cond_dim", type=int, default=512, help="Dimension of the condition vector")
     parser.add_argument("--latent_dim", type=int, default=128, help="Dimension of latent vector")
     parser.add_argument("--num_workers", type=int, default=0, help="Number of workers for data loading")
     
     args = parser.parse_args()
+    # Override checkpoint parameter to always use "vae_gan_test.pth"
+    args.checkpoint = "vae_gan_test.pth"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     if args.mode == "train":
