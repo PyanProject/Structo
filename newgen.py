@@ -9,7 +9,8 @@ import argparse
 from skimage import measure
 import clip
 from scipy.ndimage import gaussian_filter
-from tqdm import tqdm
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 # Dataset for loading .off files from the custom dataset
 class TestVoxelDataset(Dataset):
@@ -28,8 +29,16 @@ class TestVoxelDataset(Dataset):
     
     def __getitem__(self, idx):
         file_path = self.files[idx]
-        # Load mesh from .off file
-        mesh = trimesh.load(file_path, file_type='off', force='mesh')
+        # Try loading the mesh with process=False to avoid inhomogeneous array issues.
+        try:
+            mesh = trimesh.load(file_path, file_type='off', force='mesh', process=False)
+        except Exception as e:
+            try:
+                mesh = trimesh.load(file_path, file_type='off', process=False)
+            except Exception as e:
+                # If loading fails, log a warning and return None, None so that this sample is skipped.
+                print(f"Warning: Skipping file: {file_path} due to error: {e}")
+                return None, None
         
         # Determine pitch for voxelization
         pitch = mesh.bounding_box.extents.max() / self.voxel_size
@@ -40,7 +49,8 @@ class TestVoxelDataset(Dataset):
                 mesh = mesh.convex_hull
                 voxel_obj = mesh.voxelized(pitch)
             except Exception as e:
-                raise ValueError("Cannot voxelize mesh: " + file_path) from e
+                print(f"Warning: Skipping file: {file_path} due to error during voxelization: {e}")
+                return None, None
         
         voxels = voxel_obj.matrix.astype(np.float32)
         
@@ -66,8 +76,8 @@ class TestVoxelDataset(Dataset):
         voxel_tensor = torch.tensor(grid).unsqueeze(0)  # (1, voxel_size, voxel_size, voxel_size)
         
         # Generate a prompt based on the file name by extracting the object's name
-        object_name = os.path.splitext(os.path.basename(file_path))[0]  # extract file name without extension
-        object_name = object_name.replace('_', ' ')  # replace underscores with spaces
+        object_name = os.path.splitext(os.path.basename(file_path))[0]
+        object_name = object_name.replace('_', ' ')
         prompt = "3d model of " + object_name
         
         return voxel_tensor, prompt
@@ -163,8 +173,8 @@ class Discriminator(nn.Module):
 
 # VAE loss combining reconstruction loss and KL divergence
 def vae_loss(recon, x, mu, logvar):
-    recon_loss = nn.functional.binary_cross_entropy(recon, x, reduction='sum')
-    kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    recon_loss = nn.functional.binary_cross_entropy(recon, x, reduction='mean')
+    kl_loss = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
     return recon_loss + kl_loss
 
 # Encode text prompt using CLIP model
@@ -193,7 +203,8 @@ def train(args, device):
     dataset = TestVoxelDataset(root_dir=args.dataset, voxel_size=args.voxel_size)
     if len(dataset) == 0:
         raise ValueError("Dataset is empty. Check your dataset directory.")
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True,
+                            num_workers=args.num_workers, collate_fn=collate_fn_skip_none)
     
     latent_dim = args.latent_dim
     cond_dim = args.cond_dim
@@ -218,10 +229,7 @@ def train(args, device):
         acc_iou_total = 0.0
         batch_count = 0
 
-        # Создаем прогресс бар для текущей эпохи
-        pbar = tqdm(dataloader, desc=f'Эпоха [{epoch+1}/{args.epochs}]')
-
-        for voxels, prompts in pbar:
+        for voxels, prompts in dataloader:
             voxels = voxels.to(device)
             tokens = clip.tokenize(prompts).to(device)
             with torch.no_grad():
@@ -245,16 +253,28 @@ def train(args, device):
             acc_real = (D_real >= 0.5).float().mean().item()  # accuracy for real samples
             acc_fake = (D_fake < 0.5).float().mean().item()     # accuracy for fake samples
             
-            # Train Generator (VAE part with adversarial loss)
-            optimizer_G.zero_grad()
-            recon, mu, logvar = cvae(voxels, cond)
-            loss_vae_val = vae_loss(recon, voxels, mu, logvar)
-            D_fake_forG = discriminator(recon)
-            loss_adv = nn.functional.binary_cross_entropy(D_fake_forG, real_labels)
-            loss_G_total = loss_vae_val + args.lambda_adv * loss_adv
-            loss_G_total.backward()
-            optimizer_G.step()
-            
+            # Train Generator: perform 2 updates per batch to help generator learning
+            total_gen_loss = 0.0
+            for _ in range(2):
+                optimizer_G.zero_grad()
+                recon, mu, logvar = cvae(voxels, cond)
+                loss_vae_val = vae_loss(recon, voxels, mu, logvar)
+                D_fake_forG = discriminator(recon)
+                loss_adv = nn.functional.binary_cross_entropy(D_fake_forG, real_labels)
+                # Warm-up: escalate adversarial loss weight gradually over first 5 epochs.
+                warmup_factor = min((epoch+1) / 5.0, 1.0)
+                # Calculate ratio: if adv loss is much higher than recon loss, increase its influence.
+                loss_ratio = loss_adv.item() / (loss_vae_val.item() + 1e-8)
+                # Clamp ratio between 0.1 and 10.0 to avoid extreme scaling.
+                loss_ratio = max(0.1, min(loss_ratio, 10.0))
+                effective_lambda_adv = args.lambda_adv * warmup_factor * loss_ratio
+                loss_G_total = args.recon_weight * loss_vae_val + effective_lambda_adv * loss_adv
+                loss_G_total.backward()
+                optimizer_G.step()
+                total_gen_loss += loss_G_total.item()
+            # Считаем среднее значение генераторного лосса по двум обновлениям
+            loss_G_total = total_gen_loss / 2.0
+
             # Calculate generator accuracy: percentage of generated (fake) samples fooling the discriminator
             acc_fake_forG = (D_fake_forG >= 0.5).float().mean().item()
             
@@ -268,17 +288,7 @@ def train(args, device):
             acc_iou_total += iou.item()
             batch_count += 1
             
-            epoch_loss += loss_G_total.item()
-
-            # Обновляем информацию в прогресс баре
-            pbar.set_postfix({
-                'Loss': f'{epoch_loss/batch_count:.4f}',
-                'D_Real_Acc': f'{acc_real_total/batch_count:.4f}',
-                'D_Fake_Acc': f'{acc_fake_total/batch_count:.4f}',
-                'G_Acc': f'{acc_fake_forG_total/batch_count:.4f}',
-                'IoU': f'{acc_iou_total/batch_count:.4f}'
-            })
-            
+            epoch_loss += loss_G_total
         print(f"Epoch [{epoch+1}/{args.epochs}], Loss: {epoch_loss/len(dataset):.4f}, "
               f"Discriminator Acc (Real): {acc_real_total/batch_count:.4f}, "
               f"Discriminator Acc (Fake): {acc_fake_total/batch_count:.4f}, "
@@ -335,17 +345,69 @@ def generate(args, device, need_visualisation=True):
 
     return args.output
 
+def collate_fn_skip_none(batch):
+    # Filter out samples where voxel_tensor is None.
+    filtered = [item for item in batch if item[0] is not None]
+    if len(filtered) == 0:
+        return None  # или можно выбросить исключение, если все данные некорректны
+    return torch.utils.data.dataloader.default_collate(filtered)
+
+def analyze_clip_embeddings(args, device):
+    # Load CLIP model and tokenize texts
+    model, preprocess = clip.load("ViT-B/32", device=device)
+    
+    # Define a list of text prompts to analyze.
+    texts = [
+        "3d model of chair",
+        "3d model of airplane",
+        "3d model of table",
+        "3d model of car",
+        "3d model of sofa"
+    ]
+    
+    # Tokenize texts and compute embeddings.
+    text_tokens = clip.tokenize(texts).to(device)
+    with torch.no_grad():
+        text_embeddings = model.encode_text(text_tokens)
+    
+    # Convert embeddings to numpy and normalize them.
+    text_embeddings = text_embeddings.cpu().numpy()
+    normed_embeddings = text_embeddings / np.linalg.norm(text_embeddings, axis=1, keepdims=True)
+    
+    # Calculate and print cosine similarity matrix.
+    cosine_sim = np.dot(normed_embeddings, normed_embeddings.T)
+    print("Cosine similarity matrix:")
+    print(cosine_sim)
+    
+    # Reduce dimensions using PCA for visualization.
+    pca = PCA(n_components=2)
+    reduced_embeddings = pca.fit_transform(text_embeddings)
+    
+    # Plot the 2D PCA projection.
+    plt.figure(figsize=(8, 6))
+    for i, text in enumerate(texts):
+        plt.scatter(reduced_embeddings[i, 0], reduced_embeddings[i, 1], label=text)
+        plt.text(reduced_embeddings[i, 0] + 0.01, reduced_embeddings[i, 1] + 0.01, text)
+    
+    plt.title("PCA Projection of CLIP Text Embeddings")
+    plt.xlabel("Principal Component 1")
+    plt.ylabel("Principal Component 2")
+    plt.legend()
+    plt.show()
+
 def main():
     parser = argparse.ArgumentParser(description="VAE-GAN for text-to-3D Model Generation on custom dataset")
-    parser.add_argument("--mode", type=str, choices=["train", "generate"], required=True, help="Mode: train or generate")
+    parser.add_argument("--mode", type=str, choices=["train", "generate", "analyze"], required=True, 
+                        help="Mode: train, generate or analyze")
     parser.add_argument("--dataset", type=str, default="testdataset", help="Path to dataset directory containing OFF files")
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=8, help="Training batch size")
-    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=5e-3, help="Learning rate for generator")
     parser.add_argument("--checkpoint", type=str, default="vae_gan_test.pth", help="Checkpoint file path")
     parser.add_argument("--voxel_size", type=int, default=64, help="Voxel grid resolution")
     parser.add_argument("--output", type=str, default="model.obj", help="Output OBJ file for generation")
-    parser.add_argument("--lambda_adv", type=float, default=0.0001, help="Weight factor for adversarial loss")
+    parser.add_argument("--lambda_adv", type=float, default=0.001, help="Weight factor for adversarial loss")
+    parser.add_argument("--recon_weight", type=float, default=10.0, help="Weight factor for reconstruction loss")
     parser.add_argument("--prompt", type=str, default=None, help="Text prompt for conditional 3D generation")
     parser.add_argument("--cond_dim", type=int, default=512, help="Dimension of the condition vector")
     parser.add_argument("--latent_dim", type=int, default=128, help="Dimension of latent vector")
@@ -360,6 +422,8 @@ def main():
         train(args, device)
     elif args.mode == "generate":
         generate(args, device)
+    elif args.mode == "analyze":
+        analyze_clip_embeddings(args, device)
 
 if __name__ == "__main__":
     main()
