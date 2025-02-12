@@ -9,6 +9,8 @@ import argparse
 from skimage import measure
 import clip
 from scipy.ndimage import gaussian_filter
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 # Dataset for loading .off files from the custom dataset
 class TestVoxelDataset(Dataset):
@@ -261,8 +263,11 @@ def train(args, device):
                 loss_adv = nn.functional.binary_cross_entropy(D_fake_forG, real_labels)
                 # Warm-up: escalate adversarial loss weight gradually over first 5 epochs.
                 warmup_factor = min((epoch+1) / 5.0, 1.0)
-                effective_lambda_adv = args.lambda_adv * warmup_factor
-                # Используем recon_weight для усиления важности VAE-лосса (реконструкции)
+                # Calculate ratio: if adv loss is much higher than recon loss, increase its influence.
+                loss_ratio = loss_adv.item() / (loss_vae_val.item() + 1e-8)
+                # Clamp ratio between 0.1 and 10.0 to avoid extreme scaling.
+                loss_ratio = max(0.1, min(loss_ratio, 10.0))
+                effective_lambda_adv = args.lambda_adv * warmup_factor * loss_ratio
                 loss_G_total = args.recon_weight * loss_vae_val + effective_lambda_adv * loss_adv
                 loss_G_total.backward()
                 optimizer_G.step()
@@ -347,9 +352,53 @@ def collate_fn_skip_none(batch):
         return None  # или можно выбросить исключение, если все данные некорректны
     return torch.utils.data.dataloader.default_collate(filtered)
 
+def analyze_clip_embeddings(args, device):
+    # Load CLIP model and tokenize texts
+    model, preprocess = clip.load("ViT-B/32", device=device)
+    
+    # Define a list of text prompts to analyze.
+    texts = [
+        "3d model of chair",
+        "3d model of airplane",
+        "3d model of table",
+        "3d model of car",
+        "3d model of sofa"
+    ]
+    
+    # Tokenize texts and compute embeddings.
+    text_tokens = clip.tokenize(texts).to(device)
+    with torch.no_grad():
+        text_embeddings = model.encode_text(text_tokens)
+    
+    # Convert embeddings to numpy and normalize them.
+    text_embeddings = text_embeddings.cpu().numpy()
+    normed_embeddings = text_embeddings / np.linalg.norm(text_embeddings, axis=1, keepdims=True)
+    
+    # Calculate and print cosine similarity matrix.
+    cosine_sim = np.dot(normed_embeddings, normed_embeddings.T)
+    print("Cosine similarity matrix:")
+    print(cosine_sim)
+    
+    # Reduce dimensions using PCA for visualization.
+    pca = PCA(n_components=2)
+    reduced_embeddings = pca.fit_transform(text_embeddings)
+    
+    # Plot the 2D PCA projection.
+    plt.figure(figsize=(8, 6))
+    for i, text in enumerate(texts):
+        plt.scatter(reduced_embeddings[i, 0], reduced_embeddings[i, 1], label=text)
+        plt.text(reduced_embeddings[i, 0] + 0.01, reduced_embeddings[i, 1] + 0.01, text)
+    
+    plt.title("PCA Projection of CLIP Text Embeddings")
+    plt.xlabel("Principal Component 1")
+    plt.ylabel("Principal Component 2")
+    plt.legend()
+    plt.show()
+
 def main():
     parser = argparse.ArgumentParser(description="VAE-GAN for text-to-3D Model Generation on custom dataset")
-    parser.add_argument("--mode", type=str, choices=["train", "generate"], required=True, help="Mode: train or generate")
+    parser.add_argument("--mode", type=str, choices=["train", "generate", "analyze"], required=True, 
+                        help="Mode: train, generate or analyze")
     parser.add_argument("--dataset", type=str, default="testdataset", help="Path to dataset directory containing OFF files")
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=8, help="Training batch size")
@@ -373,6 +422,8 @@ def main():
         train(args, device)
     elif args.mode == "generate":
         generate(args, device)
+    elif args.mode == "analyze":
+        analyze_clip_embeddings(args, device)
 
 if __name__ == "__main__":
     main()
