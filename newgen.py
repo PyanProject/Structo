@@ -9,6 +9,7 @@ import argparse
 from skimage import measure
 import clip
 from scipy.ndimage import gaussian_filter
+from tqdm import tqdm
 
 # Dataset for loading .off files from the custom dataset
 class TestVoxelDataset(Dataset):
@@ -217,7 +218,10 @@ def train(args, device):
         acc_iou_total = 0.0
         batch_count = 0
 
-        for voxels, prompts in dataloader:
+        # Создаем прогресс бар для текущей эпохи
+        pbar = tqdm(dataloader, desc=f'Эпоха [{epoch+1}/{args.epochs}]')
+
+        for voxels, prompts in pbar:
             voxels = voxels.to(device)
             tokens = clip.tokenize(prompts).to(device)
             with torch.no_grad():
@@ -265,6 +269,16 @@ def train(args, device):
             batch_count += 1
             
             epoch_loss += loss_G_total.item()
+
+            # Обновляем информацию в прогресс баре
+            pbar.set_postfix({
+                'Loss': f'{epoch_loss/batch_count:.4f}',
+                'D_Real_Acc': f'{acc_real_total/batch_count:.4f}',
+                'D_Fake_Acc': f'{acc_fake_total/batch_count:.4f}',
+                'G_Acc': f'{acc_fake_forG_total/batch_count:.4f}',
+                'IoU': f'{acc_iou_total/batch_count:.4f}'
+            })
+            
         print(f"Epoch [{epoch+1}/{args.epochs}], Loss: {epoch_loss/len(dataset):.4f}, "
               f"Discriminator Acc (Real): {acc_real_total/batch_count:.4f}, "
               f"Discriminator Acc (Fake): {acc_fake_total/batch_count:.4f}, "
