@@ -5,6 +5,7 @@ import csv
 from datetime import datetime
 import time
 import shutil
+import json
 
 import torch
 import torch.nn as nn
@@ -132,7 +133,7 @@ class VoxelEncoder(nn.Module):
             if dropout_rate > 0:
                 layers.append(nn.Dropout3d(dropout_rate))
             in_channels = out_channels
-            current_size = current_size // 2
+            current_size //= 2
         self.conv = nn.Sequential(*layers)
         self.flatten_dim = in_channels * (current_size ** 3)
         self.fc_mu = nn.Linear(self.flatten_dim, latent_dim)
@@ -181,7 +182,6 @@ class ConditionalVoxelDecoder(nn.Module):
         # Здесь не применяем Sigmoid, чтобы использовать BCEWithLogitsLoss
         return x
 
-
 # =============================================================================
 # Объединённая модель CVAE_Conditional с параметризацией архитектуры
 # =============================================================================
@@ -223,7 +223,7 @@ class Discriminator(nn.Module):
             if dropout_rate > 0:
                 layers.append(nn.Dropout3d(dropout_rate))
             in_channels = out_channels
-            current_size = current_size // 2
+            current_size //= 2
         self.conv = nn.Sequential(*layers)
         self.flatten_dim = in_channels * (current_size ** 3)
         self.fc = nn.Linear(self.flatten_dim, 1)
@@ -331,6 +331,12 @@ def train(args, device):
                 logging.info(f"System RAM: Total: {mem.total/(1024**3):.2f} GB, Available: {mem.available/(1024**3):.2f} GB")
             except ImportError:
                 logging.info("psutil не установлен, информация о RAM не доступна.")
+
+    # Сохраним параметры обучения в файл (training_params.txt)
+    params_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "training_params.txt")
+    with open(params_path, "w", encoding="utf-8") as f:
+        json.dump(vars(args), f, indent=4)
+    logging.info(f"Training parameters saved to {params_path}")
 
     # Загрузка датасета
     dataset_dirs = load_dataset(args.dataset)
@@ -492,13 +498,19 @@ def train(args, device):
         logging.info(epoch_info)
         epoch_bar.set_postfix_str(epoch_info)
 
+        # Определяем классификацию эпохи и сохраняем в отдельный лог по классификации
         if avg_iou >= GOOD_IOU_THRESHOLD:
             classification = "good"
         elif avg_iou <= BAD_IOU_THRESHOLD:
             classification = "bad"
         else:
             classification = "neutral"
+        classification_line = f"{datetime.now()} - Epoch {epoch+1} classified as: {classification} | {epoch_info}\n"
         logging.info(f"Epoch {epoch+1} classified as: {classification}")
+        # Сохраним эту информацию в отдельный файл для данного типа классификации
+        class_log_path = os.path.join(logs_dir, classification, "training_epoch.log")
+        with open(class_log_path, "a", encoding="utf-8") as clf:
+            clf.write(classification_line)
 
         torch.save({
             "epoch": epoch + 1,
@@ -521,7 +533,7 @@ def train(args, device):
     checkpoint_dst = os.path.join(final_folder, "checkpoint.pth")
     shutil.copy(checkpoint_path, checkpoint_dst)
     metrics_file = os.path.join(final_folder, "metrics.txt")
-    with open(metrics_file, "w") as f:
+    with open(metrics_file, "w", encoding="utf-8") as f:
         f.write(epoch_info + "\n")
     logging.info(f"Final logs and model saved to: {final_folder}")
 
@@ -650,8 +662,15 @@ def main():
     
     args = parser.parse_args()
     args.checkpoint = "vae_gan_test.pth"
+
+    # Удаляем существующие обработчики и настраиваем логирование сразу после парсинга
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    run_dir, weights_dir, logs_dir = setup_logging_and_dirs()
+    logging.info("Logging is configured and test message logged.")
+
     device = None  # Значение устройства будет определено внутри train()
-    
+
     if args.mode == "train":
         train(args, device)
     elif args.mode == "generate":
