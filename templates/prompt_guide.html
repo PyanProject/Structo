@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Гайд по промптам</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="static\pictures\mfavicon.ico?v=1">
+    <link rel="icon" type="image/png" sizes="16x16" href="static\pictures\mfavicon.ico?v=1">
+    <link rel="icon" type="image/x-icon" href="static\pictures\mfavicon.ico?v=1">
+
+</head>
+<body>
+    <div class="top-header" id="header-title">Гайд по промптам</div>
+
+<!--<div class="lang-select">
+        <a href="#" onclick="setLanguage('ru')">RU</a>
+        <a href="#" onclick="setLanguage('en')">EN</a>
+    </div> -->
+
+    <div class="content">
+        <h1 id="guide-title">Как писать промпты? <strong class="important">(НЕАКТУАЛЬНО)</strong></h1>
+        <p id="guide-description">Этот гайд поможет вам понять, как формулировать запросы для создания 3D-моделей.</p>
+        <ul id="guide-list">
+            <li><strong>Цвет:</strong>&nbsp;Укажите цвет, например, "Красная".</li>
+            <li><strong>Форма:</strong>&nbsp;Опишите форму, например, "Сфера".</li>
+            <li><strong>Размер:</strong>&nbsp;Укажите размер, например, "Радиус 1".</li>
+
+            <p><strong class="important">ВАЖНО:</strong> Пока для генерации доступны только следующие фигуры и цвета:</p>
+            
+            <li><strong>Фигуры:</strong>&nbsp;Куб, сфера, конус, цилиндр, пирамида, тор, цилиндрическая труба.</li>
+            <li><strong>Цвета:</strong>&nbsp;Красный, синий, зелёный, жёлтый, фиолетовый, оранжевый, белый, чёрный.</li>
+            
+        </ul>
+        <a href="{{ url_for('main_page') }}" id="back-button" class="button">Вернуться назад</a>
+    </div>
+
+    <div class="footer">&copy; Pyan Inc. 2025</div>
+    <div class="version-info">alpha v.1.4</div>
+
+</body>
+</html>
