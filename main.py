@@ -23,7 +23,7 @@ from sklearn.decomposition import PCA
 from dataset_loader import load_dataset  # файл dataset_loader.py должен быть в PYTHONPATH или в той же папке
 
 # =============================================================================
-# Dataset: TestVoxelDataset с поддержкой ограничения количества образцов
+# Dataset: TestVoxelDataset
 # =============================================================================
 class TestVoxelDataset(Dataset):
     """
@@ -535,29 +535,21 @@ def train(args, device, run_dir, weights_dir, logs_dir):
 
     logging.info("Training completed successfully.")
 
-    # Принудительно сбрасываем буферы логгера и закрываем его,
-    # чтобы все сообщения были записаны вне зависимости от результата.
+    # Принудительно сбрасываем буферы логгера и закрываем его
     for handler in logging.getLogger().handlers:
         handler.flush()
     logging.shutdown()
 
-    final_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    final_folder = os.path.join("rez", classification, final_time)
-    os.makedirs(final_folder, exist_ok=True)
-    log_file_src = os.path.join(run_dir, "training.log")
-    log_file_dst = os.path.join(final_folder, "training.log")
-    shutil.copy(log_file_src, log_file_dst)
-    checkpoint_dst = os.path.join(final_folder, "checkpoint.pth")
-    shutil.copy(checkpoint_path, checkpoint_dst)
-    metrics_file = os.path.join(final_folder, "metrics.txt")
+    # Вместо создания новой финальной папки, сохраняем финальные логи и чекпоинт в уже созданной run_dir
+    metrics_file = os.path.join(run_dir, "metrics.txt")
     with open(metrics_file, "w", encoding="utf-8") as f:
         f.write(epoch_info + "\n")
-    logging.info(f"Final logs and model saved to: {final_folder}")
+    logging.info(f"Final logs and model saved to: {run_dir}")
 
 # =============================================================================
-# Generation Procedure
+# Generation Procedure (с интерфейсом визуализации 3D модели)
 # =============================================================================
-def generate(args, device):
+def generate(args, device, need_visualisation=True):
     logging.info("Starting 3D model generation")
     latent_dim = args.latent_dim
     cond_dim = args.cond_dim
@@ -596,6 +588,12 @@ def generate(args, device):
         for face in faces:
             f.write("f {} {} {}\n".format(face[0]+1, face[1]+1, face[2]+1))
     logging.info(f"3D model generated and saved to {args.output}")
+
+    if need_visualisation:
+        mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
+        mesh_vis.visual.face_colors = [200, 200, 200, 255]
+        scene = mesh_vis.scene()
+        scene.show()
 
     return args.output
 
