@@ -37,7 +37,7 @@ class TestVoxelDataset(Dataset):
         self.files = self._gather_files()
         if max_samples > 0:
             self.files = self.files[:max_samples]
-        logging.info(f"Найдено файлов для обработки: {len(self.files)}")
+        logging.info(f"[Dataset] Найдено файлов для обработки: {len(self.files)}")
 
     def _gather_files(self):
         files = []
@@ -52,26 +52,27 @@ class TestVoxelDataset(Dataset):
 
     def __getitem__(self, idx):
         file_path = self.files[idx]
-        logging.debug(f"Обработка файла: {file_path}")
+        logging.debug(f"[Dataset] Обработка файла: {file_path}")
         start_time = time.time()
         mesh = self._load_mesh(file_path)
         if mesh is None:
-            logging.warning(f"Файл {file_path} пропущен (не удалось загрузить mesh).")
+            logging.warning(f"[Dataset] Файл {file_path} пропущен (не удалось загрузить mesh).")
             return None, None
 
         voxel_obj = self._voxelize_mesh(mesh)
         if voxel_obj is None:
-            logging.warning(f"Файл {file_path} пропущен (не удалось вокселизировать mesh).")
+            logging.warning(f"[Dataset] Файл {file_path} пропущен (не удалось вокселизировать mesh).")
             return None, None
 
         voxels = voxel_obj.matrix.astype(np.float32)
         voxel_tensor = self._center_voxel_grid(voxels)
         elapsed = time.time() - start_time
-        logging.debug(f"Файл {file_path} обработан за {elapsed:.2f} сек.")
+        logging.debug(f"[Dataset] Файл {file_path} обработан за {elapsed:.2f} сек.")
 
         object_name = os.path.splitext(os.path.basename(file_path))[0].replace('_', ' ')
         prompt = "3d model of " + object_name
 
+        logging.debug(f"[Dataset] Объект: {object_name}, время обработки: {elapsed:.2f} сек, размер: {voxel_tensor.shape}")
         return voxel_tensor, prompt
 
     def _load_mesh(self, file_path):
@@ -81,7 +82,7 @@ class TestVoxelDataset(Dataset):
             try:
                 mesh = trimesh.load(file_path, file_type='off', process=False)
             except Exception as e:
-                logging.error(f"Ошибка при загрузке {file_path}: {e}")
+                logging.error(f"[Dataset] Ошибка при загрузке {file_path}: {e}")
                 return None
         return mesh
 
@@ -94,7 +95,7 @@ class TestVoxelDataset(Dataset):
                 mesh = mesh.convex_hull
                 voxel_obj = mesh.voxelized(pitch)
             except Exception as e:
-                logging.error(f"Ошибка при вокселизации: {e}")
+                logging.error(f"[Dataset] Ошибка при вокселизации: {e}")
                 return None
         return voxel_obj
 
@@ -116,81 +117,88 @@ class TestVoxelDataset(Dataset):
         return torch.tensor(grid.tolist(), dtype=torch.float32).unsqueeze(0)
 
 # =============================================================================
-# Модель VoxelEncoder с параметризацией числа слоёв и числа фильтров
+# Модель VoxelEncoder с индивидуальными блоками conv
 # =============================================================================
 class VoxelEncoder(nn.Module):
     def __init__(self, latent_dim, voxel_size, hidden_channels=32, num_layers=4, use_batch_norm=False, dropout_rate=0.0):
         super(VoxelEncoder, self).__init__()
-        layers = []
+        self.num_layers = num_layers
         in_channels = 1
         current_size = voxel_size
-        for i in range(num_layers):
-            out_channels = hidden_channels * (2 ** i)
-            layers.append(nn.Conv3d(in_channels, out_channels, kernel_size=4, stride=2, padding=1))
+        for i in range(1, num_layers+1):
+            out_channels = hidden_channels * (2 ** (i - 1))
+            setattr(self, f"conv{i}", nn.Conv3d(in_channels, out_channels, kernel_size=4, stride=2, padding=1))
             if use_batch_norm:
-                layers.append(nn.BatchNorm3d(out_channels))
-            layers.append(nn.ReLU(inplace=True))
+                setattr(self, f"bn{i}", nn.BatchNorm3d(out_channels))
+            setattr(self, f"relu{i}", nn.ReLU(inplace=True))
             if dropout_rate > 0:
-                layers.append(nn.Dropout3d(dropout_rate))
+                setattr(self, f"drop{i}", nn.Dropout3d(dropout_rate))
             in_channels = out_channels
             current_size //= 2
-        self.conv = nn.Sequential(*layers)
         self.flatten_dim = in_channels * (current_size ** 3)
         self.fc_mu = nn.Linear(self.flatten_dim, latent_dim)
         self.fc_logvar = nn.Linear(self.flatten_dim, latent_dim)
 
     def forward(self, x):
         batch_size = x.size(0)
-        x = self.conv(x)
+        for i in range(1, self.num_layers+1):
+            x = getattr(self, f"conv{i}")(x)
+            if hasattr(self, f"bn{i}"):
+                x = getattr(self, f"bn{i}")(x)
+            x = getattr(self, f"relu{i}")(x)
+            if hasattr(self, f"drop{i}"):
+                x = getattr(self, f"drop{i}")(x)
         x = x.view(batch_size, -1)
         mu = self.fc_mu(x)
         logvar = self.fc_logvar(x)
         return mu, logvar
 
 # =============================================================================
-# Модель ConditionalVoxelDecoder с параметризацией числа слоёв и числа фильтров
+# Модель ConditionalVoxelDecoder с индивидуальными блоками deconv
 # =============================================================================
 class ConditionalVoxelDecoder(nn.Module):
     def __init__(self, latent_dim, cond_dim, voxel_size, hidden_channels=32, num_layers=4, use_batch_norm=False, dropout_rate=0.0):
         super(ConditionalVoxelDecoder, self).__init__()
         self.num_layers = num_layers
-        s = voxel_size // (2 ** num_layers)  # начальное пространственное разрешение
+        s = voxel_size // (2 ** num_layers)
         initial_channels = hidden_channels * (2 ** (num_layers - 1))
-        self.s = s  # сохраняем для последующего reshape
+        self.s = s
         self.fc = nn.Linear(latent_dim + cond_dim, initial_channels * (s ** 3))
-        layers = []
         in_channels = initial_channels
-        for i in range(num_layers - 1):
+        for i in range(1, num_layers):
             out_channels = in_channels // 2
-            layers.append(nn.ConvTranspose3d(in_channels, out_channels, kernel_size=4, stride=2, padding=1))
+            setattr(self, f"deconv{i}", nn.ConvTranspose3d(in_channels, out_channels, kernel_size=4, stride=2, padding=1))
             if use_batch_norm:
-                layers.append(nn.BatchNorm3d(out_channels))
-            layers.append(nn.ReLU(inplace=True))
+                setattr(self, f"bn_deconv{i}", nn.BatchNorm3d(out_channels))
+            setattr(self, f"relu_deconv{i}", nn.ReLU(inplace=True))
             if dropout_rate > 0:
-                layers.append(nn.Dropout3d(dropout_rate))
+                setattr(self, f"drop_deconv{i}", nn.Dropout3d(dropout_rate))
             in_channels = out_channels
-        # Последний слой: без Sigmoid!
-        layers.append(nn.ConvTranspose3d(in_channels, 1, kernel_size=4, stride=2, padding=1))
-        self.deconv = nn.Sequential(*layers)
+        setattr(self, f"deconv{num_layers}", nn.ConvTranspose3d(in_channels, 1, kernel_size=4, stride=2, padding=1))
 
     def forward(self, z, cond):
         z_cond = torch.cat([z, cond], dim=1)
         x = self.fc(z_cond)
         batch_size = x.size(0)
         x = x.view(batch_size, -1, self.s, self.s, self.s)
-        x = self.deconv(x)
-        # Здесь не применяем Sigmoid, чтобы использовать BCEWithLogitsLoss
+        for i in range(1, self.num_layers):
+            x = getattr(self, f"deconv{i}")(x)
+            if hasattr(self, f"bn_deconv{i}"):
+                x = getattr(self, f"bn_deconv{i}")(x)
+            x = getattr(self, f"relu_deconv{i}")(x)
+            if hasattr(self, f"drop_deconv{i}"):
+                x = getattr(self, f"drop_deconv{i}")(x)
+        x = getattr(self, f"deconv{self.num_layers}")(x)
         return x
 
 # =============================================================================
-# Объединённая модель CVAE_Conditional с параметризацией архитектуры
+# Объединённая модель CVAE_Conditional
 # =============================================================================
 class CVAE_Conditional(nn.Module):
     def __init__(self, latent_dim, voxel_size, cond_dim,
                  hidden_channels=32, num_encoder_layers=4, num_decoder_layers=4,
                  use_batch_norm=False, dropout_rate=0.0):
         super(CVAE_Conditional, self).__init__()
-        # Предполагаем, что число слоёв энкодера и декодера совпадает
         self.encoder = VoxelEncoder(latent_dim, voxel_size, hidden_channels, num_encoder_layers, use_batch_norm, dropout_rate)
         self.decoder = ConditionalVoxelDecoder(latent_dim, cond_dim, voxel_size, hidden_channels, num_decoder_layers, use_batch_norm, dropout_rate)
 
@@ -206,7 +214,7 @@ class CVAE_Conditional(nn.Module):
         return recon, mu, logvar
 
 # =============================================================================
-# Модель Discriminator с параметризацией
+# Модель Discriminator
 # =============================================================================
 class Discriminator(nn.Module):
     def __init__(self, voxel_size, hidden_channels=32, num_layers=4, use_batch_norm=False, dropout_rate=0.0):
@@ -239,7 +247,6 @@ class Discriminator(nn.Module):
 # Utility Functions
 # =============================================================================
 def vae_loss(recon, x, mu, logvar):
-    # Если декодер не содержит Sigmoid, используем BCEWithLogitsLoss:
     recon_loss = nn.functional.binary_cross_entropy_with_logits(recon, x, reduction='mean')
     kl_loss = -0.5 * torch.mean(1 + logvar.float() - mu.float().pow(2) - logvar.float().exp())
     return recon_loss + kl_loss
@@ -266,7 +273,8 @@ def collate_fn_skip_none(batch):
     return torch.utils.data.dataloader.default_collate(filtered)
 
 # =============================================================================
-# Функция настройки логирования и создания директорий для сохранения результатов (с резервным копированием)
+# Функция настройки логирования и создания директорий для сохранения результатов
+# DEBUG-сообщения пишутся только в файл, а в консоль выводятся только INFO и выше.
 # =============================================================================
 def setup_logging_and_dirs(base_dir="rez"):
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -278,26 +286,31 @@ def setup_logging_and_dirs(base_dir="rez"):
         os.makedirs(os.path.join(weights_dir, classification), exist_ok=True)
         os.makedirs(os.path.join(logs_dir, classification), exist_ok=True)
     log_file = os.path.join(run_dir, "training.log")
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.FileHandler(log_file, encoding="utf-8"),
-            logging.StreamHandler()
-        ]
-    )
+    
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    file_handler.setFormatter(file_formatter)
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    console_handler.setFormatter(console_formatter)
+    
+    # Удаляем предыдущие обработчики, если они есть
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, console_handler])
     logging.info(f"Run directory: {run_dir}")
     return run_dir, weights_dir, logs_dir
 
 # =============================================================================
-# Training Procedure с поддержкой AMP, параллельной обработкой и сохранением результатов
+# Training Procedure
 # =============================================================================
-def train(args, device):
-    # Если включён режим parallel и num_workers не задан, задаём значение по умолчанию
+def train(args, device, run_dir, weights_dir, logs_dir):
     if args.parallel and args.num_workers == 0:
         args.num_workers = 4
 
-    # Выбор устройства
     if args.device == "cpu":
         device = torch.device("cpu")
         logging.info("Selected device: CPU")
@@ -332,13 +345,11 @@ def train(args, device):
             except ImportError:
                 logging.info("psutil не установлен, информация о RAM не доступна.")
 
-    # Сохраним параметры обучения в файл (training_params.txt)
     params_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "training_params.txt")
     with open(params_path, "w", encoding="utf-8") as f:
         json.dump(vars(args), f, indent=4)
     logging.info(f"Training parameters saved to {params_path}")
 
-    # Загрузка датасета
     dataset_dirs = load_dataset(args.dataset)
     if not dataset_dirs:
         raise ValueError("Dataset is empty. Check your dataset directory or known dataset name.")
@@ -348,6 +359,10 @@ def train(args, device):
     if len(dataset) == 0:
         raise ValueError("Dataset is empty. Check your dataset directory.")
     
+    num_files = len(dataset)
+    sample_files = dataset.files[:10]
+    logging.info(f"[Dataset] Всего файлов: {num_files}. Примеры: {sample_files}")
+
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True,
                               num_workers=args.num_workers, collate_fn=collate_fn_skip_none)
     
@@ -376,7 +391,6 @@ def train(args, device):
     model_clip, _ = clip.load("ViT-B/32", device=device)
     model_clip.eval()
 
-    run_dir, weights_dir, logs_dir = setup_logging_and_dirs()
     checkpoint_path = os.path.join(run_dir, "checkpoint.pth")
     
     use_amp = args.amp and torch.cuda.is_available()
@@ -498,7 +512,6 @@ def train(args, device):
         logging.info(epoch_info)
         epoch_bar.set_postfix_str(epoch_info)
 
-        # Определяем классификацию эпохи и сохраняем в отдельный лог по классификации
         if avg_iou >= GOOD_IOU_THRESHOLD:
             classification = "good"
         elif avg_iou <= BAD_IOU_THRESHOLD:
@@ -507,7 +520,6 @@ def train(args, device):
             classification = "neutral"
         classification_line = f"{datetime.now()} - Epoch {epoch+1} classified as: {classification} | {epoch_info}\n"
         logging.info(f"Epoch {epoch+1} classified as: {classification}")
-        # Сохраним эту информацию в отдельный файл для данного типа классификации
         class_log_path = os.path.join(logs_dir, classification, "training_epoch.log")
         with open(class_log_path, "a", encoding="utf-8") as clf:
             clf.write(classification_line)
@@ -523,7 +535,12 @@ def train(args, device):
 
     logging.info("Training completed successfully.")
 
-    # Сохранение итоговых логов, метрик и модели в папку rez/<classification>/<date_time>/
+    # Принудительно сбрасываем буферы логгера и закрываем его,
+    # чтобы все сообщения были записаны вне зависимости от результата.
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    logging.shutdown()
+
     final_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     final_folder = os.path.join("rez", classification, final_time)
     os.makedirs(final_folder, exist_ok=True)
@@ -538,9 +555,9 @@ def train(args, device):
     logging.info(f"Final logs and model saved to: {final_folder}")
 
 # =============================================================================
-# Generation Procedure (без изменений)
+# Generation Procedure
 # =============================================================================
-def generate(args, device, need_visualisation=True):
+def generate(args, device):
     logging.info("Starting 3D model generation")
     latent_dim = args.latent_dim
     cond_dim = args.cond_dim
@@ -580,16 +597,10 @@ def generate(args, device, need_visualisation=True):
             f.write("f {} {} {}\n".format(face[0]+1, face[1]+1, face[2]+1))
     logging.info(f"3D model generated and saved to {args.output}")
 
-    if need_visualisation:
-        mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
-        mesh_vis.visual.face_colors = [200, 200, 200, 255]
-        scene = mesh_vis.scene()
-        scene.show()
-
     return args.output
 
 # =============================================================================
-# Analysis Procedure for CLIP Embeddings (без изменений)
+# Analysis Procedure for CLIP Embeddings
 # =============================================================================
 def analyze_clip_embeddings(args, device):
     logging.info("Starting CLIP embeddings analysis")
@@ -663,16 +674,14 @@ def main():
     args = parser.parse_args()
     args.checkpoint = "vae_gan_test.pth"
 
-    # Удаляем существующие обработчики и настраиваем логирование сразу после парсинга
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
+    # Создаем единую директорию для логирования и результатов
     run_dir, weights_dir, logs_dir = setup_logging_and_dirs()
     logging.info("Logging is configured and test message logged.")
 
-    device = None  # Значение устройства будет определено внутри train()
+    device = None
 
     if args.mode == "train":
-        train(args, device)
+        train(args, device, run_dir, weights_dir, logs_dir)
     elif args.mode == "generate":
         generate(args, device)
     elif args.mode == "analyze":
