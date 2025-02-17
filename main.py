@@ -114,7 +114,8 @@ class TestVoxelDataset(Dataset):
                 slices_voxels.append(slice(start_vox, start_vox + vs))
                 slices_grid.append(slice(0, vs))
         grid[slices_grid[0], slices_grid[1], slices_grid[2]] = voxels[slices_voxels[0], slices_voxels[1], slices_voxels[2]]
-        return torch.tensor(grid.tolist(), dtype=torch.float32).unsqueeze(0)
+        # Преобразуем с помощью torch.from_numpy для сохранения точности
+        return torch.from_numpy(grid).float().unsqueeze(0)
 
 # =============================================================================
 # Модель VoxelEncoder с индивидуальными блоками conv
@@ -154,7 +155,68 @@ class VoxelEncoder(nn.Module):
         return mu, logvar
 
 # =============================================================================
-# Модель ConditionalVoxelDecoder с индивидуальными блоками deconv
+# Transformer-based Refinement Block for 3D feature maps
+# =============================================================================
+class TransformerRefinementBlock(nn.Module):
+    def __init__(self, channels, transformer_heads, transformer_ffn_dim):
+        super(TransformerRefinementBlock, self).__init__()
+        self.transformer_layer = nn.TransformerEncoderLayer(d_model=channels, nhead=transformer_heads, dim_feedforward=transformer_ffn_dim)
+        self.norm = nn.LayerNorm(channels)
+
+    def forward(self, x):
+        # x: (B, C, D, H, W)
+        B, C, D, H, W = x.shape
+        N = D * H * W
+        # Переформатируем в последовательность: (N, B, C)
+        x_flat = x.view(B, C, N).permute(2, 0, 1)
+        x_trans = self.transformer_layer(x_flat)
+        # Резидуальное соединение и нормализация
+        x_trans = x_flat + x_trans
+        x_trans = self.norm(x_trans)
+        # Возвращаем в исходную форму: (B, C, D, H, W)
+        x_out = x_trans.permute(1, 2, 0).view(B, C, D, H, W)
+        return x_out
+
+# =============================================================================
+# Иерархическая модель ConditionalVoxelDecoder с многоступенчатым восстановлением
+# с использованием блоков трансформера для самовнимания
+# =============================================================================
+class HierarchicalConditionalVoxelDecoder(nn.Module):
+    def __init__(self, latent_dim, cond_dim, voxel_size, hidden_channels=32, num_stages=4,
+                 use_batch_norm=False, dropout_rate=0.0, transformer_heads=4, transformer_ffn_dim=512):
+        super(HierarchicalConditionalVoxelDecoder, self).__init__()
+        self.num_stages = num_stages
+        self.s = voxel_size // (2 ** num_stages)
+        initial_channels = hidden_channels * (2 ** (num_stages - 1))
+        self.fc = nn.Linear(latent_dim + cond_dim, initial_channels * (self.s ** 3))
+        self.stages = nn.ModuleList()
+        in_channels = initial_channels
+        for i in range(num_stages):
+            if i < num_stages - 1:
+                stage = nn.Sequential(
+                    nn.ConvTranspose3d(in_channels, in_channels // 2, kernel_size=4, stride=2, padding=1),
+                    nn.BatchNorm3d(in_channels // 2) if use_batch_norm else nn.Identity(),
+                    nn.ReLU(inplace=True),
+                    TransformerRefinementBlock(in_channels // 2, transformer_heads, transformer_ffn_dim)
+                )
+                self.stages.append(stage)
+                in_channels = in_channels // 2
+            else:
+                # Последний этап: формируем выход с 1 каналом
+                stage = nn.ConvTranspose3d(in_channels, 1, kernel_size=4, stride=2, padding=1)
+                self.stages.append(stage)
+
+    def forward(self, z, cond):
+        z_cond = torch.cat([z, cond], dim=1)
+        x = self.fc(z_cond)
+        batch_size = x.size(0)
+        x = x.view(batch_size, -1, self.s, self.s, self.s)
+        for stage in self.stages:
+            x = stage(x)
+        return x
+
+# =============================================================================
+# Модель ConditionalVoxelDecoder с индивидуальными блоками deconv (старый вариант)
 # =============================================================================
 class ConditionalVoxelDecoder(nn.Module):
     def __init__(self, latent_dim, cond_dim, voxel_size, hidden_channels=32, num_layers=4, use_batch_norm=False, dropout_rate=0.0):
@@ -197,10 +259,20 @@ class ConditionalVoxelDecoder(nn.Module):
 class CVAE_Conditional(nn.Module):
     def __init__(self, latent_dim, voxel_size, cond_dim,
                  hidden_channels=32, num_encoder_layers=4, num_decoder_layers=4,
-                 use_batch_norm=False, dropout_rate=0.0):
+                 use_batch_norm=False, dropout_rate=0.0,
+                 use_hierarchical_decoder=False, num_refinement_stages=4,
+                 transformer_heads=4, transformer_ffn_dim=512):
         super(CVAE_Conditional, self).__init__()
         self.encoder = VoxelEncoder(latent_dim, voxel_size, hidden_channels, num_encoder_layers, use_batch_norm, dropout_rate)
-        self.decoder = ConditionalVoxelDecoder(latent_dim, cond_dim, voxel_size, hidden_channels, num_decoder_layers, use_batch_norm, dropout_rate)
+        if use_hierarchical_decoder:
+            self.decoder = HierarchicalConditionalVoxelDecoder(latent_dim, cond_dim, voxel_size, hidden_channels,
+                                                                num_stages=num_refinement_stages,
+                                                                use_batch_norm=use_batch_norm,
+                                                                dropout_rate=dropout_rate,
+                                                                transformer_heads=transformer_heads,
+                                                                transformer_ffn_dim=transformer_ffn_dim)
+        else:
+            self.decoder = ConditionalVoxelDecoder(latent_dim, cond_dim, voxel_size, hidden_channels, num_layers=num_decoder_layers, use_batch_norm=use_batch_norm, dropout_rate=dropout_rate)
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -227,7 +299,8 @@ class Discriminator(nn.Module):
             layers.append(nn.Conv3d(in_channels, out_channels, kernel_size=4, stride=2, padding=1))
             if use_batch_norm:
                 layers.append(nn.BatchNorm3d(out_channels))
-            layers.append(nn.ReLU(inplace=True))
+            # Используем LeakyReLU для стабильности
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
             if dropout_rate > 0:
                 layers.append(nn.Dropout3d(dropout_rate))
             in_channels = out_channels
@@ -260,7 +333,9 @@ def encode_prompt(prompt, device):
     return prompt_embedding
 
 def compute_iou(recon, target, threshold=0.5):
-    binary_recon = (recon > threshold).float()
+    # Преобразуем логиты в вероятности
+    prob = torch.sigmoid(recon)
+    binary_recon = (prob > threshold).float()
     binary_target = (target > threshold).float()
     intersection = (binary_recon * binary_target).view(binary_recon.size(0), -1).sum(dim=1)
     union = ((binary_recon + binary_target) > 0).float().view(binary_recon.size(0), -1).sum(dim=1)
@@ -374,7 +449,11 @@ def train(args, device, run_dir, weights_dir, logs_dir):
             num_encoder_layers=args.num_encoder_layers,
             num_decoder_layers=args.num_decoder_layers,
             use_batch_norm=args.use_batch_norm,
-            dropout_rate=args.dropout_rate).to(device)
+            dropout_rate=args.dropout_rate,
+            use_hierarchical_decoder=args.use_hierarchical_decoder,
+            num_refinement_stages=args.num_refinement_stages,
+            transformer_heads=args.transformer_heads,
+            transformer_ffn_dim=args.transformer_ffn_dim).to(device)
     
     discriminator = Discriminator(voxel_size,
             hidden_channels=args.disc_hidden_channels,
@@ -454,6 +533,7 @@ def train(args, device, run_dir, weights_dir, logs_dir):
             acc_fake = (torch.sigmoid(D_fake) < 0.5).float().mean().item()
 
             total_gen_loss = 0.0
+            # Два шага обновления генератора
             for _ in range(2):
                 optimizer_G.zero_grad()
                 if use_amp:
@@ -484,8 +564,10 @@ def train(args, device, run_dir, weights_dir, logs_dir):
                     loss_G_total.backward()
                     optimizer_G.step()
                 total_gen_loss += loss_G_total.item()
+            # Диагностика: логируем среднее значение вероятностей генератора
+            gen_prob = torch.sigmoid(recon).mean().item()
+            logging.debug(f"Generator output probability mean: {gen_prob:.4f}")
 
-            loss_G_total = total_gen_loss / 2.0
             acc_fake_forG = (torch.sigmoid(D_fake_forG) >= 0.5).float().mean().item()
             iou = compute_iou(recon, voxels)
 
@@ -494,9 +576,9 @@ def train(args, device, run_dir, weights_dir, logs_dir):
             acc_fake_forG_total += acc_fake_forG
             acc_iou_total += iou.item()
             batch_count += 1
-            epoch_loss += loss_G_total
+            epoch_loss += total_gen_loss / 2.0
 
-            batch_bar.set_postfix(loss=loss_G_total, D_real=acc_real, D_fake=acc_fake)
+            batch_bar.set_postfix(loss=total_gen_loss / 2.0, D_real=acc_real, D_fake=acc_fake)
 
         avg_loss = epoch_loss / batch_count
         avg_acc_real = acc_real_total / batch_count
@@ -558,10 +640,14 @@ def generate(args, device, need_visualisation=True):
              num_encoder_layers=args.num_encoder_layers,
              num_decoder_layers=args.num_decoder_layers,
              use_batch_norm=args.use_batch_norm,
-             dropout_rate=args.dropout_rate).to(device)
+             dropout_rate=args.dropout_rate,
+             use_hierarchical_decoder=args.use_hierarchical_decoder,
+             num_refinement_stages=args.num_refinement_stages,
+             transformer_heads=args.transformer_heads,
+             transformer_ffn_dim=args.transformer_ffn_dim).to(device)
     
     checkpoint = torch.load(args.checkpoint, map_location=device)
-    cvae.load_state_dict(checkpoint["cvae_state_dict"])
+    cvae.load_state_dict(checkpoint["cvae_state_dict"], strict=False)
     cvae.eval()
 
     z = torch.randn(1, latent_dim).to(device)
@@ -649,7 +735,8 @@ def main():
     parser.add_argument("--checkpoint", type=str, default="vae_gan_test.pth", help="Checkpoint file path")
     parser.add_argument("--voxel_size", type=int, default=64, help="Voxel grid resolution")
     parser.add_argument("--output", type=str, default="model.obj", help="Output OBJ file for generation")
-    parser.add_argument("--lambda_adv", type=float, default=0.001, help="Weight factor for adversarial loss")
+    # Изменённое значение lambda_adv (было 0.001, теперь 0.01)
+    parser.add_argument("--lambda_adv", type=float, default=0.01, help="Weight factor for adversarial loss")
     parser.add_argument("--recon_weight", type=float, default=10.0, help="Weight factor for reconstruction loss")
     parser.add_argument("--prompt", type=str, default=None, help="Text prompt for conditional 3D generation")
     parser.add_argument("--cond_dim", type=int, default=512, help="Dimension of the condition vector")
@@ -661,13 +748,19 @@ def main():
                         help="Device to use: auto, cpu, or gpu")
     parser.add_argument("--parallel", action="store_true", help="Enable parallel processing")
     # Новые параметры для архитектуры
+    # По умолчанию включаем batch normalization для стабильного обучения
+    parser.add_argument("--use_batch_norm", action="store_true", default=True, help="Use batch normalization in the networks")
     parser.add_argument("--hidden_channels", type=int, default=32, help="Initial number of hidden channels for encoder/decoder")
     parser.add_argument("--num_encoder_layers", type=int, default=4, help="Number of layers in the encoder")
     parser.add_argument("--num_decoder_layers", type=int, default=4, help="Number of layers in the decoder")
-    parser.add_argument("--use_batch_norm", action="store_true", help="Use batch normalization in the networks")
     parser.add_argument("--dropout_rate", type=float, default=0.0, help="Dropout rate (0.0 means no dropout)")
     parser.add_argument("--disc_hidden_channels", type=int, default=32, help="Initial hidden channels for discriminator")
     parser.add_argument("--disc_num_layers", type=int, default=4, help="Number of layers in the discriminator")
+    # Новые параметры для иерархической генерации и трансформеров
+    parser.add_argument("--use_hierarchical_decoder", action="store_true", help="Use hierarchical (multi-stage) decoder with transformer refinement")
+    parser.add_argument("--num_refinement_stages", type=int, default=4, help="Number of refinement stages in hierarchical decoder")
+    parser.add_argument("--transformer_heads", type=int, default=4, help="Number of heads in transformer attention blocks")
+    parser.add_argument("--transformer_ffn_dim", type=int, default=512, help="Feedforward dimension in transformer attention blocks")
     
     args = parser.parse_args()
     args.checkpoint = "vae_gan_test.pth"
