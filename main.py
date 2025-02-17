@@ -668,6 +668,14 @@ def main():
     parser.add_argument("--dropout_rate", type=float, default=0.0, help="Dropout rate (0.0 means no dropout)")
     parser.add_argument("--disc_hidden_channels", type=int, default=32, help="Initial hidden channels for discriminator")
     parser.add_argument("--disc_num_layers", type=int, default=4, help="Number of layers in the discriminator")
+    parser.add_argument("--use_hierarchical_decoder", action="store_true",
+                        help="Использовать иерархический декодер")
+    parser.add_argument("--num_refinement_stages", type=int, default=4,
+                        help="Количество этапов уточнения")
+    parser.add_argument("--transformer_heads", type=int, default=4,
+                        help="Количество голов в трансформере")
+    parser.add_argument("--transformer_ffn_dim", type=int, default=512,
+                        help="Размерность FFN в трансформере")
     
     args = parser.parse_args()
     args.checkpoint = "vae_gan_test.pth"
