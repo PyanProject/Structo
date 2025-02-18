@@ -658,12 +658,12 @@ def generate(args, device, need_visualisation=True):
         cond = torch.zeros(1, cond_dim).to(device)
     with torch.no_grad():
         recon = cvae.decoder(z, cond)
-    recon_prob = torch.sigmoid(recon)
-    voxel_grid = recon_prob.cpu().data.numpy()
+    recon_prob = torch.sigmoid(recon)   # Получаем вероятность вокселей, for sanya, тут начало нового кода
+    voxel_grid = recon_prob.cpu().data.numpy() 
     voxel_grid = gaussian_filter(voxel_grid, sigma=1)
 
     # Extract the single 3D volume from the 5D array (batch and channel dimensions)
-    voxel_grid = voxel_grid[0, 0]
+    voxel_grid = voxel_grid[0, 0] # режем массив на 3D массив, for sanya
 
     # Вычисляем статистику воксельной сетки
     v_min, v_max = voxel_grid.min(), voxel_grid.max()
@@ -679,7 +679,8 @@ def generate(args, device, need_visualisation=True):
     print("Using threshold level:", level)
 
     # Применяем marching cubes для извлечения поверхности
-    verts, faces, normals, values = measure.marching_cubes(voxel_grid, level=level)
+    verts, faces, normals, values = measure.marching_cubes(voxel_grid, level=level) # тут конец нового кода и фикса генерации
+
     with open("example.mtl", "w") as mtl_file:
         mtl_file.write("newmtl material0\n")
         mtl_file.write("Kd 1.0 1.0 1.0\n")  # White diffuse color.
