@@ -364,13 +364,11 @@ def setup_logging_and_dirs(base_dir="rez"):
     
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    file_handler.setFormatter(file_formatter)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    console_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     
     # Удаляем предыдущие обработчики, если они есть
     for handler in logging.root.handlers[:]:
@@ -503,6 +501,9 @@ def train(args, device, run_dir, weights_dir, logs_dir):
             tokens = clip.tokenize(prompts).to(device)
             with torch.no_grad():
                 cond = model_clip.encode_text(tokens)
+
+            # Вызываем функцию отладки для одного батча
+            debug_model_forward(cvae, discriminator, voxels, cond)
 
             optimizer_D.zero_grad()
             real_labels = torch.ones(voxels.size(0), 1, device=device) * 0.9
@@ -656,28 +657,49 @@ def generate(args, device, need_visualisation=True):
     else:
         cond = torch.zeros(1, cond_dim).to(device)
     with torch.no_grad():
-        voxel_out = cvae.decoder(z, cond)
-    voxel_grid = voxel_out.squeeze().cpu().numpy()
+        recon = cvae.decoder(z, cond)
+    recon_prob = torch.sigmoid(recon)
+    voxel_grid = recon_prob.cpu().data.numpy()
     voxel_grid = gaussian_filter(voxel_grid, sigma=1)
 
-    v_min, v_max = voxel_grid.min(), voxel_grid.max()
-    if not (v_min <= 0.5 <= v_max):
-        level = (v_min + v_max) / 2
-        logging.warning(f"Level 0.5 not in range [{v_min:.3f}, {v_max:.3f}]. Using level {level:.3f}.")
-    else:
-        level = 0.5
+    # Extract the single 3D volume from the 5D array (batch and channel dimensions)
+    voxel_grid = voxel_grid[0, 0]
 
+    # Вычисляем статистику воксельной сетки
+    v_min, v_max = voxel_grid.min(), voxel_grid.max()
+    print("Voxel grid stats - min:", v_min, "max:", v_max)
+
+    # Выбираем значение порога:
+    # Если 0.5 лежит в диапазоне значений, то можно его использовать
+    if v_min <= 0.5 <= v_max:
+        level = 0.5
+    else:
+        # Иначе вычисляем порог как среднее между min и max
+        level = (v_min + v_max) / 2.0
+    print("Using threshold level:", level)
+
+    # Применяем marching cubes для извлечения поверхности
     verts, faces, normals, values = measure.marching_cubes(voxel_grid, level=level)
+    with open("example.mtl", "w") as mtl_file:
+        mtl_file.write("newmtl material0\n")
+        mtl_file.write("Kd 1.0 1.0 1.0\n")  # White diffuse color.
+        mtl_file.write("Ka 0.5 0.5 0.5\n")  # Ambient color (not too dark).
+        mtl_file.write("Ks 0.0 0.0 0.0\n")  # Specular color.
+
     with open(args.output, "w") as f:
+        f.write("mtllib example.mtl\n")
         for v in verts:
             f.write("v {} {} {}\n".format(v[0], v[1], v[2]))
+        for n in normals:
+            f.write("vn {} {} {}\n".format(n[0], n[1], n[2]))
+        f.write("usemtl material0\n")
         for face in faces:
-            f.write("f {} {} {}\n".format(face[0]+1, face[1]+1, face[2]+1))
+            f.write("f {0}//{0} {1}//{1} {2}//{2}\n".format(face[0]+1, face[1]+1, face[2]+1))
     logging.info(f"3D model generated and saved to {args.output}")
 
     if need_visualisation:
         mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
-        mesh_vis.visual.face_colors = [200, 200, 200, 255]
+        mesh_vis.visual.face_colors = [200, 200, 200, 255]  # Задаем светло-серый цвет
         scene = mesh_vis.scene()
         scene.show()
 
@@ -777,6 +799,43 @@ def main():
         generate(args, device)
     elif args.mode == "analyze":
         analyze_clip_embeddings(args, device)
+
+def debug_model_forward(cvae, discriminator, voxels, cond):
+    """
+    Debug the forward pass of the conditional VAE-GAN model.
+    Prints intermediate shapes and some basic stats.
+    """
+    import time
+    start_time = time.time()
+
+    print("Input voxels shape:", voxels.shape)
+    # Pass through the encoder
+    mu, logvar = cvae.encoder(voxels)
+    print("Encoder output shapes: mu =", mu.shape, "logvar =", logvar.shape)
+    
+    # Reparameterize
+    z = cvae.reparameterize(mu, logvar)
+    print("Latent vector z shape:", z.shape)
+    
+    # Concatenate latent vector with condition vector
+    z_cond = torch.cat([z, cond], dim=1)
+    print("Concatenated z_cond shape:", z_cond.shape)
+    
+    # Check the fc output in decoder (both ConditionalVoxelDecoder and HierarchicalConditionalVoxelDecoder use fc)
+    fc_output = cvae.decoder.fc(z_cond)
+    print("Decoder fc output shape:", fc_output.shape)
+    
+    # Full forward pass: obtain reconstruction
+    recon, mu_out, logvar_out = cvae(voxels, cond)
+    print("Reconstruction output shape:", recon.shape)
+    
+    # Pass real and fake voxels through discriminator
+    discrim_real = discriminator(voxels)
+    discrim_fake = discriminator(recon)
+    print("Discriminator real output shape:", discrim_real.shape)
+    print("Discriminator fake output shape:", discrim_fake.shape)
+    
+    print("Time for debug forward pass: {:.4f} seconds".format(time.time() - start_time))
 
 if __name__ == "__main__":
     main()
