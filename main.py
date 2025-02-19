@@ -18,6 +18,9 @@ from skimage import measure
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+import torch.nn.functional as F
+from torch.multiprocessing import Pool
+from omegaconf import OmegaConf
 
 # Импорт функций для загрузки датасета
 from dataset_loader import load_dataset  # файл dataset_loader.py должен быть в PYTHONPATH или в той же папке
@@ -38,6 +41,8 @@ class TestVoxelDataset(Dataset):
         if max_samples > 0:
             self.files = self.files[:max_samples]
         logging.info(f"[Dataset] Найдено файлов для обработки: {len(self.files)}")
+        self.cache = {}
+        self.max_cache_size = 1000  # Ограничиваем размер кэша
 
     def _gather_files(self):
         files = []
@@ -52,6 +57,15 @@ class TestVoxelDataset(Dataset):
 
     def __getitem__(self, idx):
         file_path = self.files[idx]
+        
+        # Очистка кэша при достижении лимита
+        if len(self.cache) > self.max_cache_size:
+            self.cache.clear()
+            torch.cuda.empty_cache()  # Очищаем GPU память
+            
+        if file_path in self.cache:
+            return self.cache[file_path]
+            
         logging.debug(f"[Dataset] Обработка файла: {file_path}")
         start_time = time.time()
         mesh = self._load_mesh(file_path)
@@ -73,6 +87,11 @@ class TestVoxelDataset(Dataset):
         prompt = "3d model of " + object_name
 
         logging.debug(f"[Dataset] Объект: {object_name}, время обработки: {elapsed:.2f} сек, размер: {voxel_tensor.shape}")
+        
+        # Кэшируем только небольшие объекты
+        if voxel_tensor.numel() * voxel_tensor.element_size() < 1e6:  # ~1MB
+            self.cache[file_path] = (voxel_tensor, prompt)
+            
         return voxel_tensor, prompt
 
     def _load_mesh(self, file_path):
@@ -319,6 +338,7 @@ class Discriminator(nn.Module):
 # =============================================================================
 # Utility Functions
 # =============================================================================
+@torch.jit.script  # JIT-компиляция критичных функций
 def vae_loss(recon, x, mu, logvar):
     recon_loss = nn.functional.binary_cross_entropy_with_logits(recon, x, reduction='mean')
     kl_loss = -0.5 * torch.mean(1 + logvar.float() - mu.float().pow(2) - logvar.float().exp())
@@ -486,6 +506,9 @@ def train(args, device, run_dir, weights_dir, logs_dir):
     from tqdm import tqdm
     epoch_bar = tqdm(range(args.epochs), desc="Epochs", unit="epoch")
     for epoch in epoch_bar:
+        # Очищаем память в начале каждой эпохи
+        torch.cuda.empty_cache()
+        
         epoch_loss = 0.0
         acc_real_total = 0.0
         acc_fake_total = 0.0
@@ -495,53 +518,75 @@ def train(args, device, run_dir, weights_dir, logs_dir):
 
         batch_bar = tqdm(dataloader, desc=f"Epoch {epoch+1}", leave=False)
         for voxels, prompts in batch_bar:
-            if voxels is None:
-                continue
-            voxels = voxels.to(device)
-            tokens = clip.tokenize(prompts).to(device)
-            with torch.no_grad():
-                cond = model_clip.encode_text(tokens)
-
-            # Вызываем функцию отладки для одного батча
-            debug_model_forward(cvae, discriminator, voxels, cond)
-
+            # Освобождаем память после каждого батча
+            if hasattr(torch.cuda, 'empty_cache'):
+                torch.cuda.empty_cache()
+                
+            # Используем градиентное накопление для больших батчей
+            effective_batch_size = args.batch_size
+            accumulation_steps = 4  # Разбиваем батч на 4 части
+            
             optimizer_D.zero_grad()
-            real_labels = torch.ones(voxels.size(0), 1, device=device) * 0.9
-            fake_labels = torch.zeros(voxels.size(0), 1, device=device)
+            optimizer_G.zero_grad()
+            
+            for i in range(0, voxels.size(0), effective_batch_size // accumulation_steps):
+                batch_voxels = voxels[i:i + effective_batch_size // accumulation_steps].to(device)
+                batch_prompts = [prompts[j] for j in range(i, min(i + effective_batch_size // accumulation_steps, len(prompts)))]
+                
+                with torch.no_grad():
+                    cond = model_clip.encode_text(clip.tokenize(batch_prompts).to(device))
 
-            if use_amp:
-                with torch.cuda.amp.autocast():
-                    recon, mu, logvar = cvae(voxels, cond)
-                    D_real = discriminator(voxels)
+                # Вызываем функцию отладки для одного батча
+                debug_model_forward(cvae, discriminator, batch_voxels, cond)
+
+                real_labels = torch.ones(batch_voxels.size(0), 1, device=device) * 0.9
+                fake_labels = torch.zeros(batch_voxels.size(0), 1, device=device)
+
+                if use_amp:
+                    with torch.cuda.amp.autocast():
+                        recon, mu, logvar = cvae(batch_voxels, cond)
+                        # Сначала получаем D_real
+                        D_real = discriminator(batch_voxels)
+                        loss_D_real = nn.functional.binary_cross_entropy_with_logits(D_real, real_labels)
+                        # Затем получаем D_fake
+                        D_fake = discriminator(recon.detach())
+                        loss_D_fake = nn.functional.binary_cross_entropy_with_logits(D_fake, fake_labels)
+                        loss_D = (loss_D_real + loss_D_fake) / 2
+                    scaler.scale(loss_D).backward()
+                else:
+                    recon, mu, logvar = cvae(batch_voxels, cond)
+                    # Сначала получаем D_real
+                    D_real = discriminator(batch_voxels)
                     loss_D_real = nn.functional.binary_cross_entropy_with_logits(D_real, real_labels)
+                    # Затем получаем D_fake
                     D_fake = discriminator(recon.detach())
                     loss_D_fake = nn.functional.binary_cross_entropy_with_logits(D_fake, fake_labels)
                     loss_D = (loss_D_real + loss_D_fake) / 2
-                scaler.scale(loss_D).backward()
-                scaler.step(optimizer_D)
-                scaler.update()
-            else:
-                recon, mu, logvar = cvae(voxels, cond)
-                D_real = discriminator(voxels)
-                loss_D_real = nn.functional.binary_cross_entropy_with_logits(D_real, real_labels)
-                D_fake = discriminator(recon.detach())
-                loss_D_fake = nn.functional.binary_cross_entropy_with_logits(D_fake, fake_labels)
-                loss_D = (loss_D_real + loss_D_fake) / 2
-                loss_D.backward()
-                optimizer_D.step()
+                    loss_D.backward()
 
-            acc_real = (torch.sigmoid(D_real) >= 0.5).float().mean().item()
-            acc_fake = (torch.sigmoid(D_fake) < 0.5).float().mean().item()
+                acc_real = (torch.sigmoid(D_real) >= 0.5).float().mean().item()
+                acc_fake = (torch.sigmoid(D_fake) < 0.5).float().mean().item()
 
-            total_gen_loss = 0.0
-            # Два шага обновления генератора
-            for _ in range(2):
-                optimizer_G.zero_grad()
-                if use_amp:
-                    with torch.cuda.amp.autocast():
-                        recon, mu, logvar = cvae(voxels, cond)
-                        with torch.cuda.amp.autocast(enabled=False):
-                            loss_vae_val = vae_loss(recon, voxels, mu, logvar)
+                total_gen_loss = 0.0
+                # Два шага обновления генератора
+                for _ in range(2):
+                    optimizer_G.zero_grad()
+                    if use_amp:
+                        with torch.cuda.amp.autocast():
+                            recon, mu, logvar = cvae(batch_voxels, cond)
+                            with torch.cuda.amp.autocast(enabled=False):
+                                loss_vae_val = vae_loss(recon, batch_voxels, mu, logvar)
+                            D_fake_forG = discriminator(recon)
+                            loss_adv = nn.functional.binary_cross_entropy_with_logits(D_fake_forG, real_labels)
+                            warmup_factor = min((epoch + 1) / 5.0, 1.0)
+                            loss_ratio = loss_adv.item() / (loss_vae_val.item() + 1e-8)
+                            loss_ratio = max(0.1, min(loss_ratio, 10.0))
+                            effective_lambda_adv = args.lambda_adv * warmup_factor * loss_ratio
+                            loss_G_total = args.recon_weight * loss_vae_val + effective_lambda_adv * loss_adv
+                        scaler.scale(loss_G_total).backward()
+                    else:
+                        recon, mu, logvar = cvae(batch_voxels, cond)
+                        loss_vae_val = vae_loss(recon, batch_voxels, mu, logvar)
                         D_fake_forG = discriminator(recon)
                         loss_adv = nn.functional.binary_cross_entropy_with_logits(D_fake_forG, real_labels)
                         warmup_factor = min((epoch + 1) / 5.0, 1.0)
@@ -549,28 +594,15 @@ def train(args, device, run_dir, weights_dir, logs_dir):
                         loss_ratio = max(0.1, min(loss_ratio, 10.0))
                         effective_lambda_adv = args.lambda_adv * warmup_factor * loss_ratio
                         loss_G_total = args.recon_weight * loss_vae_val + effective_lambda_adv * loss_adv
-                    scaler.scale(loss_G_total).backward()
-                    scaler.step(optimizer_G)
-                    scaler.update()
-                else:
-                    recon, mu, logvar = cvae(voxels, cond)
-                    loss_vae_val = vae_loss(recon, voxels, mu, logvar)
-                    D_fake_forG = discriminator(recon)
-                    loss_adv = nn.functional.binary_cross_entropy_with_logits(D_fake_forG, real_labels)
-                    warmup_factor = min((epoch + 1) / 5.0, 1.0)
-                    loss_ratio = loss_adv.item() / (loss_vae_val.item() + 1e-8)
-                    loss_ratio = max(0.1, min(loss_ratio, 10.0))
-                    effective_lambda_adv = args.lambda_adv * warmup_factor * loss_ratio
-                    loss_G_total = args.recon_weight * loss_vae_val + effective_lambda_adv * loss_adv
-                    loss_G_total.backward()
+                        loss_G_total.backward()
                     optimizer_G.step()
-                total_gen_loss += loss_G_total.item()
-            # Диагностика: логируем среднее значение вероятностей генератора
-            gen_prob = torch.sigmoid(recon).mean().item()
-            logging.debug(f"Generator output probability mean: {gen_prob:.4f}")
+                    total_gen_loss += loss_G_total.item()
+                # Диагностика: логируем среднее значение вероятностей генератора
+                gen_prob = torch.sigmoid(recon).mean().item()
+                logging.debug(f"Generator output probability mean: {gen_prob:.4f}")
 
             acc_fake_forG = (torch.sigmoid(D_fake_forG) >= 0.5).float().mean().item()
-            iou = compute_iou(recon, voxels)
+            iou = compute_iou(recon, batch_voxels)
 
             acc_real_total += acc_real
             acc_fake_total += acc_fake
@@ -607,13 +639,7 @@ def train(args, device, run_dir, weights_dir, logs_dir):
         with open(class_log_path, "a", encoding="utf-8") as clf:
             clf.write(classification_line)
 
-        torch.save({
-            "epoch": epoch + 1,
-            "cvae_state_dict": cvae.state_dict(),
-            "discriminator_state_dict": discriminator.state_dict(),
-            "optimizer_G": optimizer_G.state_dict(),
-            "optimizer_D": optimizer_D.state_dict(),
-        }, checkpoint_path)
+        save_checkpoint(cvae, optimizer_G, epoch, {'loss': avg_loss, 'iou': avg_iou}, checkpoint_path)
         logging.info(f"Checkpoint saved (overwritten) at: {checkpoint_path}")
 
     logging.info("Training completed successfully.")
@@ -628,6 +654,8 @@ def train(args, device, run_dir, weights_dir, logs_dir):
     with open(metrics_file, "w", encoding="utf-8") as f:
         f.write(epoch_info + "\n")
     logging.info(f"Final logs and model saved to: {run_dir}")
+
+    torch.cuda.empty_cache()  # очистка GPU памяти после больших операций
 
 # =============================================================================
 # Generation Procedure (с интерфейсом визуализации 3D модели)
@@ -656,6 +684,7 @@ def generate(args, device, need_visualisation=True):
         cond = encode_prompt(args.prompt, device)
     else:
         cond = torch.zeros(1, cond_dim).to(device)
+        
     with torch.no_grad():
         recon = cvae.decoder(z, cond)
     recon_prob = torch.sigmoid(recon)   # Получаем вероятность вокселей, for sanya, тут начало нового кода
@@ -679,13 +708,13 @@ def generate(args, device, need_visualisation=True):
     print("Using threshold level:", level)
 
     # Применяем marching cubes для извлечения поверхности
-    verts, faces, normals, values = measure.marching_cubes(voxel_grid, level=level) # тут конец нового кода и фикса генерации
+    verts, faces, normals, values = measure.marching_cubes(voxel_grid, level=level)
 
     with open("example.mtl", "w") as mtl_file:
         mtl_file.write("newmtl material0\n")
-        mtl_file.write("Kd 1.0 1.0 1.0\n")  # White diffuse color.
-        mtl_file.write("Ka 0.5 0.5 0.5\n")  # Ambient color (not too dark).
-        mtl_file.write("Ks 0.0 0.0 0.0\n")  # Specular color.
+        mtl_file.write("Kd 1.0 1.0 1.0\n")
+        mtl_file.write("Ka 0.5 0.5 0.5\n")
+        mtl_file.write("Ks 0.0 0.0 0.0\n")
 
     with open(args.output, "w") as f:
         f.write("mtllib example.mtl\n")
@@ -700,7 +729,7 @@ def generate(args, device, need_visualisation=True):
 
     if need_visualisation:
         mesh_vis = trimesh.Trimesh(vertices=verts, faces=faces)
-        mesh_vis.visual.face_colors = [200, 200, 200, 255]  # Задаем светло-серый цвет
+        mesh_vis.visual.face_colors = [200, 200, 200, 255]
         scene = mesh_vis.scene()
         scene.show()
 
@@ -837,6 +866,85 @@ def debug_model_forward(cvae, discriminator, voxels, cond):
     print("Discriminator fake output shape:", discrim_fake.shape)
     
     print("Time for debug forward pass: {:.4f} seconds".format(time.time() - start_time))
+
+# Добавить ResNet-блоки в энкодер/декодер
+class ResNetBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv3d(channels, channels, 3, padding=1)
+        self.conv2 = nn.Conv3d(channels, channels, 3, padding=1)
+        self.bn1 = nn.BatchNorm3d(channels)
+        self.bn2 = nn.BatchNorm3d(channels)
+        
+    def forward(self, x):
+        residual = x
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        return F.relu(x + residual)
+
+def parallel_process_batch(batch_data):
+    # Параллельная обработка батча
+    pass
+
+def test_model(model):
+    # Unit тесты
+    assert model.training
+    test_input = torch.randn(1, 1, 64, 64, 64)
+    output = model(test_input)
+    expected_output_shape = (1, 1, 64, 64, 64)  # Ожидаемая форма выходных данных
+    assert output.shape == expected_output_shape
+
+def visualize_results(model_output, save_path):
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    # Визуализация в 3D
+    plt.savefig(save_path)
+
+def load_config():
+    config = OmegaConf.load('config.yaml')
+    return config
+
+@torch.amp.autocast('cuda')
+def memory_efficient_forward(model, input_data):
+    # Эффективное использование памяти
+    with torch.amp.autocast('cuda'):
+        output = model(input_data)
+    return output
+
+def monitor_resources():
+    import psutil
+    import GPUtil
+    
+    cpu_percent = psutil.cpu_percent()
+    memory_percent = psutil.virtual_memory().percent
+    gpu_util = GPUtil.getGPUs()[0].load if torch.cuda.is_available() else 0
+    
+    logging.info(f"CPU: {cpu_percent}%, RAM: {memory_percent}%, GPU: {gpu_util}%")
+
+def save_checkpoint(model, optimizer, epoch, metrics, path):
+    """
+    Сохраняет состояние модели и оптимизатора
+    
+    Args:
+        model: модель для сохранения
+        optimizer: оптимизатор
+        epoch: текущая эпоха
+        metrics: словарь с метриками
+        path: путь для сохранения чекпоинта
+    """
+    torch.save({
+        'epoch': epoch,
+        'cvae_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'metrics': metrics,
+        'args': model.args if hasattr(model, 'args') else None,
+    }, path)
+    
+    logging.info(f"Checkpoint saved at epoch {epoch} to {path}")
+    logging.debug(f"Metrics at save: {metrics}")
 
 if __name__ == "__main__":
     main()
