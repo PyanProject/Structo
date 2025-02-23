@@ -19,6 +19,7 @@ from main import generate as newgen
 # =============================================================================
 
 # Создаем приложение с относительной конфигурацией
+
 app = Flask(__name__, instance_relative_config=True)
 
 # Задаем путь для загрузки сгенерированных моделей
@@ -76,6 +77,7 @@ check_db_tables()
 
 # Определяем устройство
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
 print(f"Используемое устройство для веб-приложения: {device}")
 
 # Инициализация генератора эмбеддингов с использованием CLIP
@@ -123,7 +125,7 @@ def generate_model():
     parser.add_argument("--dataset", type=str, default="testdataset",
                         help="Path to dataset directory containing OFF files")
     parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
-    parser.add_argument("--batch_size", type=int, default=8, help="Training batch size")
+    parser.add_argument("--batch_size", type=int, default=2, help="Training batch size")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--checkpoint", type=str, default="vae_gan_test.pth",
                         help="Checkpoint file path")
