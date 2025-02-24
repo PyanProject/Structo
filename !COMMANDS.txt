@@ -1,7 +1,0 @@
-for newgen.py:
-
-train: python main.py --mode train --dataset /path/to/dataset --epochs 50 --batch_size 8 --lr 5e-3 --voxel_size 64 --cond_dim 512 --latent_dim 128 --num_workers 0
-
-generate: python main.py --mode generate --prompt "3d model of chair" --voxel_size 64 --latent_dim 128 --cond_dim 512 --output chair.obj
-
-analyze_clip_embeddings: python main.py --mode analyze
