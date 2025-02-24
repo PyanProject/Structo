@@ -11,9 +11,8 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from main import generate as newgen
+from newgen import generate as newgen
 import argparse
-
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'models')
