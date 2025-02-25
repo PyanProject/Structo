@@ -39,6 +39,9 @@ class TextTo3DModel(nn.Module):
             num_layers=config.model.shape_generator.num_layers,
             voxel_dim=config.model.shape_generator.voxel_dim
         )
+        
+        # Сохраняем конфигурацию
+        self.config = config
     
     def forward(self, text_prompts):
         """
@@ -77,6 +80,48 @@ class TextTo3DModel(nn.Module):
             voxel_grid = self.forward([text_prompt])
             
             # Бинаризация по порогу
-            binary_voxel_grid = (voxel_grid > threshold).float()
+            binary_voxel_grid = (torch.sigmoid(voxel_grid) > threshold).float()
         
-        return binary_voxel_grid 
+        return binary_voxel_grid
+    
+    def enable_gradient_checkpointing(self):
+        """
+        Включает gradient checkpointing для экономии памяти.
+        Это замедляет обучение, но значительно снижает использование памяти.
+        """
+        # Включаем gradient checkpointing в генераторе формы
+        if hasattr(self.shape_generator, 'use_gradient_checkpointing'):
+            self.shape_generator.use_gradient_checkpointing = True
+            print("Включен gradient checkpointing для генератора формы")
+        
+        # Включаем gradient checkpointing в текстовом энкодере, если он не заморожен
+        if not self.config.model.text_encoder.freeze and hasattr(self.text_encoder, 'model'):
+            if hasattr(self.text_encoder.model, 'gradient_checkpointing_enable'):
+                self.text_encoder.model.gradient_checkpointing_enable()
+                print("Включен gradient checkpointing для текстового энкодера")
+        
+        print("Gradient checkpointing успешно настроен для экономии памяти")
+    
+    def get_memory_usage(self):
+        """
+        Возвращает текущее использование памяти моделью.
+        
+        Returns:
+            dict: Словарь с информацией об использовании памяти.
+        """
+        memory_stats = {}
+        
+        if torch.cuda.is_available():
+            memory_stats['allocated'] = torch.cuda.memory_allocated() / 1e9  # В ГБ
+            memory_stats['cached'] = torch.cuda.memory_reserved() / 1e9  # В ГБ
+            memory_stats['max_allocated'] = torch.cuda.max_memory_allocated() / 1e9  # В ГБ
+        
+        # Подсчет параметров
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        
+        memory_stats['total_params'] = total_params
+        memory_stats['trainable_params'] = trainable_params
+        memory_stats['frozen_params'] = total_params - trainable_params
+        
+        return memory_stats 

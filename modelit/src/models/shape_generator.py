@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.utils.checkpoint as checkpoint
 
 class VoxelTransformer(nn.Module):
     """
@@ -25,6 +26,7 @@ class VoxelTransformer(nn.Module):
         
         self.latent_dim = latent_dim
         self.voxel_dim = voxel_dim
+        self.use_gradient_checkpointing = False
         
         # Трансформер-декодер для обработки текстовых эмбеддингов
         decoder_layer = nn.TransformerDecoderLayer(
@@ -72,19 +74,37 @@ class VoxelTransformer(nn.Module):
         
         # Финальный слой для получения воксельной сетки
         self.final_layer = nn.Conv3d(hidden_dims[-1], 1, kernel_size=3, stride=1, padding=1)
+        
+        # Инициализация весов
+        self._initialize_weights()
     
-    def forward(self, text_embeddings):
+    def _initialize_weights(self):
         """
-        Генерирует 3D воксельное представление из текстового эмбеддинга.
+        Инициализация весов для улучшения сходимости.
+        """
+        for m in self.modules():
+            if isinstance(m, (nn.Conv3d, nn.ConvTranspose3d)):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm3d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
+                
+    def _transform_latent(self, text_embeddings):
+        """
+        Предварительная обработка текстовых эмбеддингов.
         
         Args:
-            text_embeddings (torch.Tensor): Тензор текстовых эмбеддингов размера (batch_size, latent_dim).
+            text_embeddings (torch.Tensor): Входные текстовые эмбеддинги.
             
         Returns:
-            torch.Tensor: Воксельное представление размера (batch_size, 1, voxel_dim, voxel_dim, voxel_dim).
+            tuple: Кортеж (latent, pos_embeddings, memory).
         """
         batch_size = text_embeddings.shape[0]
-        device = text_embeddings.device
         
         # Проекция текстового эмбеддинга
         latent = self.latent_projection(text_embeddings)
@@ -98,11 +118,33 @@ class VoxelTransformer(nn.Module):
         # Подготовка памяти для трансформера
         memory = latent.repeat(1, pos_embeddings.shape[1], 1)
         
-        # Transformer Decoder
-        transformer_output = self.transformer_decoder(pos_embeddings, memory)
+        return latent, pos_embeddings, memory
+    
+    def _run_transformer(self, pos_embeddings, memory):
+        """
+        Обработка данных трансформером.
         
-        # Среднее по последовательности для получения глобального представления
-        transformer_output = transformer_output.mean(dim=1)
+        Args:
+            pos_embeddings (torch.Tensor): Позиционные эмбеддинги.
+            memory (torch.Tensor): Память для трансформера.
+            
+        Returns:
+            torch.Tensor: Выход трансформера.
+        """
+        # Применяем трансформер-декодер
+        return self.transformer_decoder(pos_embeddings, memory)
+    
+    def _run_cnn_decoder(self, transformer_output):
+        """
+        Обработка выхода трансформера с помощью CNN декодера.
+        
+        Args:
+            transformer_output (torch.Tensor): Выход трансформера.
+            
+        Returns:
+            torch.Tensor: Воксельная сетка.
+        """
+        batch_size = transformer_output.shape[0]
         
         # Проекция и преобразование размерности
         x = self.initial_projection(transformer_output)
@@ -112,7 +154,41 @@ class VoxelTransformer(nn.Module):
         for layer in self.decoder_cnn:
             x = layer(x)
         
-        # Финальный слой и сигмоида для получения вероятностей воксельной сетки
-        voxel_grid = torch.sigmoid(self.final_layer(x))
+        # Финальный слой для получения воксельной сетки (без сигмоиды)
+        voxel_grid = self.final_layer(x)
+        
+        return voxel_grid
+    
+    def forward(self, text_embeddings):
+        """
+        Генерирует 3D воксельное представление из текстового эмбеддинга.
+        
+        Args:
+            text_embeddings (torch.Tensor): Тензор текстовых эмбеддингов размера (batch_size, latent_dim).
+            
+        Returns:
+            torch.Tensor: Воксельное представление размера (batch_size, 1, voxel_dim, voxel_dim, voxel_dim).
+        """
+        # Предварительная обработка текстовых эмбеддингов
+        latent, pos_embeddings, memory = self._transform_latent(text_embeddings)
+        
+        # Применение трансформер-декодера с возможностью включения gradient checkpointing
+        if self.use_gradient_checkpointing and self.training:
+            transformer_output = checkpoint.checkpoint(
+                self._run_transformer, pos_embeddings, memory
+            )
+        else:
+            transformer_output = self._run_transformer(pos_embeddings, memory)
+        
+        # Среднее по последовательности для получения глобального представления
+        transformer_output = transformer_output.mean(dim=1)
+        
+        # Применение CNN декодера с возможностью включения gradient checkpointing
+        if self.use_gradient_checkpointing and self.training:
+            voxel_grid = checkpoint.checkpoint(
+                self._run_cnn_decoder, transformer_output
+            )
+        else:
+            voxel_grid = self._run_cnn_decoder(transformer_output)
         
         return voxel_grid 
