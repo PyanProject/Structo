@@ -18,7 +18,7 @@ def load_config(config_path):
     Returns:
         SimpleNamespace: Объект с параметрами конфигурации.
     """
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         config_dict = yaml.safe_load(f)
     
     # Преобразование словаря в объект с атрибутами
@@ -95,7 +95,7 @@ def main():
     """
     # Парсинг аргументов командной строки
     parser = argparse.ArgumentParser(description="Генерация 3D моделей из текстовых описаний")
-    parser.add_argument("--config", type=str, default="configs/default.yaml", help="Путь к файлу конфигурации")
+    parser.add_argument("--config", type=str, default="modelit/configs/default.yaml", help="Путь к файлу конфигурации")
     parser.add_argument("--checkpoint", type=str, default="checkpoints/best_model.pt", help="Путь к чекпоинту модели")
     parser.add_argument("--prompt", type=str, required=True, help="Текстовое описание для генерации 3D модели")
     parser.add_argument("--output", type=str, default="models/output.obj", help="Путь для сохранения сгенерированной модели")

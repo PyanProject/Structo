@@ -38,7 +38,7 @@ model:
 
 # Training parameters
 training:
-  num_epochs: 5
+  num_epochs: 100
   learning_rate: 0.0001
   weight_decay: 0.0001
   lr_scheduler:
