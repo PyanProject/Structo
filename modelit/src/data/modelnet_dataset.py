@@ -9,103 +9,39 @@ import sys
 # Добавляем путь к корневой директории проекта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.voxelization import mesh_to_voxel
+from src.utils.voxelization import mesh_to_voxel
 
 class ModelNetDataset(Dataset):
     """
     Датасет для работы с ModelNet40.
     """
     
-    def __init__(self, root_dir, split='train', transform=None, voxel_resolution=64, text_augmentation=True):
+    def __init__(self, root_dir, split='train', transform=None, voxel_resolution=64, text_augmentation=False):
         """
-        Инициализация датасета ModelNet40.
+        Initializes the ModelNet dataset.
         
         Args:
-            root_dir (str): Путь к директории с датасетом.
-            split (str): Разделение датасета ('train' или 'test').
-            transform (callable, optional): Трансформации данных.
+            root_dir (str): Root directory of the dataset.
+            split (str): 'train' or 'test' split.
+            transform (callable, optional): Transform to apply to the data.
             voxel_resolution (int): Разрешение воксельной сетки.
-            text_augmentation (bool): Использовать ли аугментацию текста.
+            text_augmentation (bool): Whether to use text augmentation.
         """
+        assert split in ['train', 'test'], "Split must be 'train' or 'test'"
+        
         self.root_dir = root_dir
         self.split = split
         self.transform = transform
         self.voxel_resolution = voxel_resolution
         self.text_augmentation = text_augmentation
-        
-        assert self.split in ['train', 'test'], "Split должен быть 'train' или 'test'"
-        
-        # Загрузка списка классов
-        self.categories = sorted([d for d in os.listdir(root_dir) 
-                                 if os.path.isdir(os.path.join(root_dir, d))])
-        
-        # Словарь для преобразования названий классов в описания на естественном языке
-        self.class_descriptions = {
-            "airplane": ["самолет", "воздушное судно", "летающий аппарат"],
-            "bathtub": ["ванна", "джакузи", "купель для ванной"],
-            "bed": ["кровать", "спальное место", "ложе"],
-            "bench": ["скамейка", "лавка", "парковая скамья"],
-            "bookshelf": ["книжная полка", "стеллаж для книг", "шкаф для книг"],
-            "bottle": ["бутылка", "сосуд для жидкости", "емкость для напитков"],
-            "bowl": ["миска", "чаша", "пиала"],
-            "car": ["автомобиль", "машина", "легковой транспорт"],
-            "chair": ["стул", "кресло", "сиденье"],
-            "cone": ["конус", "коническая форма", "конусообразный предмет"],
-            "cup": ["чашка", "кружка", "стакан"],
-            "curtain": ["занавеска", "штора", "портьера"],
-            "desk": ["стол", "письменный стол", "рабочий стол"],
-            "door": ["дверь", "дверная панель", "вход"],
-            "dresser": ["комод", "шкаф", "мебель для хранения"],
-            "flower_pot": ["цветочный горшок", "горшок для растений", "кашпо"],
-            "glass_box": ["стеклянная коробка", "аквариум", "стеклянный куб"],
-            "guitar": ["гитара", "акустический инструмент", "струнный инструмент"],
-            "keyboard": ["клавиатура", "устройство ввода", "компьютерная периферия"],
-            "lamp": ["лампа", "светильник", "осветительный прибор"],
-            "laptop": ["ноутбук", "портативный компьютер", "лэптоп"],
-            "mantel": ["камин", "портал камина", "каминная полка"],
-            "monitor": ["монитор", "экран", "дисплей"],
-            "night_stand": ["тумбочка", "прикроватная тумба", "ночной столик"],
-            "person": ["человек", "фигура человека", "манекен"],
-            "piano": ["пианино", "фортепиано", "клавишный инструмент"],
-            "plant": ["растение", "комнатное растение", "декоративный цветок"],
-            "radio": ["радио", "радиоприемник", "аудиоустройство"],
-            "range_hood": ["вытяжка", "кухонная вытяжка", "очиститель воздуха"],
-            "sink": ["раковина", "мойка", "умывальник"],
-            "sofa": ["диван", "софа", "мягкая мебель"],
-            "stairs": ["лестница", "ступени", "лестничный пролет"],
-            "stool": ["табурет", "табуретка", "низкое сиденье"],
-            "table": ["стол", "обеденный стол", "столешница"],
-            "tent": ["палатка", "тент", "временное укрытие"],
-            "toilet": ["унитаз", "туалет", "сантехника"],
-            "tv_stand": ["тумба под телевизор", "подставка для ТВ", "медиа-консоль"],
-            "vase": ["ваза", "декоративный сосуд", "емкость для цветов"],
-            "wardrobe": ["шкаф", "гардероб", "платяной шкаф"],
-            "xbox": ["игровая консоль", "приставка", "игровая система"]
-        }
-        
-        # Шаблоны для аугментации текста
-        self.text_templates = [
-            "трехмерный объект: {}",
-            "3D модель объекта, называемого {}",
-            "трехмерная модель {}",
-            "{} в трехмерном пространстве",
-            "компьютерная 3D модель объекта: {}",
-            "визуализация трехмерного предмета: {}",
-            "3D рендер объекта: {}",
-            "объемная модель {}"
-        ]
-        
-        # Атрибуты описания
-        self.attributes = [
-            "простой", "сложный", "детализированный", "геометрический", 
-            "обычный", "современный", "минималистичный", "классический",
-            "стандартный", "базовый", "функциональный", "практичный"
-        ]
-        
-        # Загрузка списка файлов
         self.file_list = []
-        for category in self.categories:
-            category_dir = os.path.join(root_dir, category, self.split)
+        
+        # Get all categories
+        categories = sorted([d for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))])
+        
+        # Load file paths
+        for category in categories:
+            category_dir = os.path.join(root_dir, category, split)
             
             if not os.path.exists(category_dir):
                 continue
@@ -119,14 +55,14 @@ class ModelNetDataset(Dataset):
                     'category': category
                 })
                 
-        print(f"Загружено {len(self.file_list)} файлов для {split} набора")
+        print(f"Loaded {len(self.file_list)} files for {split} set")
     
     def __len__(self):
         """
-        Возвращает размер датасета.
+        Returns the size of the dataset.
         
         Returns:
-            int: Количество образцов в датасете.
+            int: Number of samples in the dataset.
         """
         return len(self.file_list)
     
@@ -160,7 +96,7 @@ class ModelNetDataset(Dataset):
             voxel_tensor = torch.FloatTensor(voxels).unsqueeze(0)  # [1, D, H, W]
             
             # Генерация текстового описания
-            text_prompt = self.generate_text_prompt(category)
+            text_prompt = self.get_description(category)
             
             # Если нужны преобразования, применяем их
             if self.transform is not None:
@@ -178,35 +114,41 @@ class ModelNetDataset(Dataset):
             # Возвращаем первый элемент в случае ошибки
             return self.__getitem__(0) if idx != 0 else None
     
-    def generate_text_prompt(self, category):
+    def get_description(self, category):
         """
-        Генерирует текстовое описание для категории.
+        Generates a description for the 3D object category.
         
         Args:
-            category (str): Категория объекта.
+            category (str): The category name.
             
         Returns:
-            str: Текстовое описание.
+            str: A text description of the 3D object.
         """
-        # Базовое описание без аугментации
+        # Basic description without augmentation
         if not self.text_augmentation or self.split == 'test':
-            return f"3D модель объекта: {category}"
+            return f"3D model of object: {category}"
         
-        # Выбор случайного шаблона
-        template = random.choice(self.text_templates)
+        # Choose a random template
+        template = random.choice([
+            "3D object: {}",
+            "3D model of an object called {}",
+            "three-dimensional model of {}",
+            "{} in 3D space",
+            "computer 3D model of: {}",
+            "visualization of a three-dimensional item: {}",
+            "3D render of: {}",
+            "volumetric model of {}"
+        ])
         
-        # Выбор случайного описания для категории
-        if category in self.class_descriptions:
-            description = random.choice(self.class_descriptions[category])
+        # Choose a random attribute
+        attribute = random.choice([
+            "simple", "complex", "detailed", "geometric", 
+            "common", "modern", "minimalist", "classic",
+            "standard", "basic", "functional", "practical"
+        ])
+        
+        # Add attribute with 50% probability
+        if random.random() > 0.5:
+            return template.format(f"{attribute} {category}")
         else:
-            description = category
-        
-        # Добавляем случайные атрибуты (с вероятностью 70%)
-        if random.random() < 0.7:
-            attribute = random.choice(self.attributes)
-            description = f"{attribute} {description}"
-        
-        # Формируем финальный текст
-        text_prompt = template.format(description)
-        
-        return text_prompt 
+            return template.format(category) 
