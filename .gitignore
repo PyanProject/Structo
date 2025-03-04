@@ -1,28 +1,10 @@
-venv/
-modelit/venv
-ModelNet40/
-CoolDataset/
-
-models/*
-!models/.gitkeep
-
-
-temp_emb/*
-!temp_emb/.gitkeep
-
 __pycache__/
-*.py[cod]
-
-*.log
-*.tmp
-*.bak
-
 .DS_Store
-Thumbs.db
+*.egg-info/
 
-.idea/
-.vscode/
+samples/
+shap_e_model_cache/
 
-rez/
+venv/
 
-checkpoints/
+test_outputs/
