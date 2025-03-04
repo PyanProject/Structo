@@ -8,201 +8,500 @@
     <style>
         body {
             margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
             font-family: 'Arial', sans-serif;
             color: #ffffff;
-            overflow-x: hidden;
-        }
-
-        .top-header {
-            width: 100%;
-            padding: 10px 20px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-            background-color: rgba(0, 0, 0, 0.8);
-        }
-
-        #header-title {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .language-buttons {
-            margin-right: 40px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .language-buttons button {
-            background-color: #ffffff;
-            color: #000000;
-            border: none;
-            padding: 5px 15px;
-            font-size: 1rem;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s;
-        }
-
-        .language-buttons button:hover {
-            background-color: #272727;
-            color: #ffffff;
-            transform: scale(1.05);
-        }
-
-
-        .section:nth-child(odd) {
-            background-color: #181818;
-        }
-
-        .section:nth-child(even) {
-            background-color: #000000;
-        }
-
-        .section:first-child {
             background: linear-gradient(-45deg, rgb(151, 5, 255), rgba(0,0,0,1), rgb(255, 0, 0));
         }
 
-        .section h2 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #ffffff;
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
         }
 
-        .section p, .section ul {
-            font-size: 1.2rem;
-            line-height: 1.8;
-            color: #d1d1d1;
-            max-width: 800px;
+        #loading-screen video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
         }
 
-        .button {
-            font-size: 1rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-            padding: 15px 30px;
-            background-color: #ffffff;
-            color: #000000;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 5px;
-            transition: background-color 0.3s ease, transform 0.2s;
+        #loading-screen.fade-out {
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
         }
 
-        .button:hover {
-            color: #ffffff;
-            background-color: #202020;
-            transform: scale(1.05);
-        }
-        
-        .button:hover svg {
-            fill: #ffffff;
+        .main-content {
+            opacity: 0;
+            transition: opacity 2.5s ease-in-out;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .button svg {
-            width: 20px;
-            height: 20px;
-            fill: #141e30;
+        .main-content.visible {
+            opacity: 1;
         }
 
-        .footer {
-            text-align: center;
-            padding: 10px;
-            font-size: 0.9rem;
-            color: #aaaaaa;
-            background-color: rgb(0, 0, 0);
+        .sections-container {
+            display: flex;
+            width: 400%;
+            height: calc(100vh - 60px);
+            overflow-x: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            margin-top: 60px;
+            background: rgba(0, 0, 0, 0.3);
         }
 
         .section {
-            font-size: 4rem;
+            flex: 0 0 25%;
+            height: 100%;
+            scroll-snap-align: start;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            height: 100vh;
             padding: 20px;
             box-sizing: border-box;
-            transform: translateY(0px);
-            transition: transform 1s ease-in-out;
+            position: relative;
+            overflow: hidden;
         }
 
-        .section.visible {
+        .section::before {
+            display: none;
+        }
+
+        .section::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, transparent 8%);
+            background-size: 3vw 3vw;
+            background-position: 0 0;
+            z-index: -1;
+            opacity: 0.3;
+            animation: moveBackground 60s linear infinite;
+        }
+
+        @keyframes moveBackground {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 100% 100%;
+            }
+        }
+
+        .section h1,
+        .section h2 {
+            position: relative;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .scroll-arrow {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .scroll-arrow:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .scroll-arrow.left {
+            left: 20px;
+        }
+
+        .scroll-arrow.right {
+            right: 20px;
+        }
+
+        .scroll-arrow svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .top-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        #header-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        .language-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .language-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .language-buttons button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        #generate-button {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            font-weight: bold;
+        }
+
+        #generate-button:hover {
+            background: linear-gradient(45deg, #ff8e8e, #ff6b6b);
+        }
+
+        .section h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .section p {
+            font-size: 18px;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .section .button {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 24px;
+            border-radius: 25px;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .section .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+            background: linear-gradient(45deg, #ff8e8e, #ff6b6b);
+        }
+
+        .section .button svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            fill: currentColor;
+        }
+
+        @media (max-width: 768px) {
+            .section h1 {
+                font-size: 36px;
+            }
+
+            .section h2 {
+                font-size: 28px;
+            }
+
+            .section p {
+                font-size: 16px;
+                padding: 0 20px;
+            }
+
+            .section .button {
+                font-size: 14px;
+                padding: 10px 20px;
+            }
+
+            #header-title {
+                font-size: 20px;
+            }
+
+            .language-buttons button {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .section h1 {
+                font-size: 28px;
+            }
+
+            .section h2 {
+                font-size: 24px;
+            }
+
+            .section p {
+                font-size: 14px;
+            }
+        }
+
+        /* Общий контейнер для фонов */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 2.5s ease-in-out;
+        }
+
+        .background-container.visible {
+            opacity: 1;
+        }
+
+        /* Стили для фонов */
+        .section-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        #bg1 {
+            background: linear-gradient(135deg, rgba(151, 5, 255, 0.7), rgba(255, 0, 0, 0.7));
+        }
+
+        #bg2 {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(151, 5, 255, 0.7));
+        }
+
+        #bg3 {
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.7), rgba(0, 0, 0, 0.8));
+        }
+
+        #bg4 {
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.7), rgba(151, 5, 255, 0.7));
+        }
+
+        .section-background.active {
+            opacity: 1;
+        }
+
+        /* Стили для анимации текста */
+        .fade-in-element {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .fade-in-element.visible {
             opacity: 1;
             transform: translateY(0);
         }
 
-        .section h2, .section p, .section ul, .section .button{
-            transform: translateY(200px);
-            transition: transform 1s ease-in-out;
+        /* Добавляем задержки для разных элементов */
+        .fade-delay-1 {
+            transition-delay: 0.2s;
         }
 
-        .section.visible h2, .section.visible p, .section.visible ul, .section.visible .button {
+        .fade-delay-2 {
+            transition-delay: 0.4s;
+        }
+
+        /* Обновляем стили секций */
+        .section h1, 
+        .section h2, 
+        .section p, 
+        .section .button {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .section.active h1, 
+        .section.active h2, 
+        .section.active p, 
+        .section.active .button {
             opacity: 1;
             transform: translateY(0);
         }
 
+        .section.active h1 {
+            transition-delay: 0.2s;
+        }
+
+        .section.active h2 {
+            transition-delay: 0.2s;
+        }
+
+        .section.active p {
+            transition-delay: 0.4s;
+        }
+
+        .section.active .button {
+            transition-delay: 0.6s;
+        }
     </style>
 </head>
 <body>
-    <!-- Верхний блок с заголовком -->
-    <header class="top-header">
-        <h1 id="header-title">Modelit</h1>
-        <div class="language-buttons">
-            <!-- Новая кнопка "Перейти к генерации" -->
-            <button id="generate-button" onclick="goToGeneration()">Перейти к генерации</button>
-            <button onclick="setLanguage('ru')">RU</button>
-            <button onclick="setLanguage('en')">EN</button>
+    <div class="background-container">
+        <div class="section-background" id="bg1"></div>
+        <div class="section-background" id="bg2"></div>
+        <div class="section-background" id="bg3"></div>
+        <div class="section-background" id="bg4"></div>
+    </div>
+
+    <div id="loading-screen">
+        <video autoplay muted playsinline>
+            <source src="{{ url_for('static', filename='pictures/medved_tryaset_zhopoy_pod_a4.mp4') }}" type="video/mp4">
+            Ваш браузер не поддерживает видео
+        </video>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <h1 id="header-title">Modelit</h1>
+            <div class="language-buttons">
+                <button id="generate-button" onclick="goToGeneration()">Перейти к генерации</button>
+                <button onclick="setLanguage('ru')">RU</button>
+                <button onclick="setLanguage('en')">EN</button>
+            </div>
+        </header>
+
+        <div class="sections-container">
+            <section class="section" id="section1">
+                <h1 id="main-title">Modelit</h1>
+                <p id="main-description">Сделай свою 3D модель легко и просто!</p>
+            </section>
+
+            <section class="section" id="section2">
+                <h2 id="about-title">О Modelit</h2>
+                <p id="about-description">Modelit — это платформа для генерации и визуализации 3D-моделей. Мы предлагаем простые инструменты, которые помогут воплотить ваши идеи в реальность.</p>
+            </section>
+
+            <section class="section" id="section3">
+                <h2 id="generate">Опробуй Modelit</h2>
+                <a href="{{ url_for('main_page') }}" class="button" id="try-button">Перейти к генерации</a>
+            </section>
+
+            <section class="section" id="section4">
+                <h2 id="contact-title">Контакт с нами</h2>
+                <a href="https://github.com/PyanProject/modelit" target="_blank" class="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.87 10.91.58.11.79-.25.79-.56v-2.07c-3.21.7-3.89-1.39-3.89-1.39-.52-1.31-1.28-1.66-1.28-1.66-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.67 1.25 3.32.96.1-.74.4-1.25.73-1.54-2.56-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.3 1.18-3.12-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11.01 11.01 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.73.82 1.18 1.86 1.18 3.12 0 4.42-2.72 5.39-5.3 5.67.41.35.77 1.05.77 2.11v3.12c0 .31.21.68.8.56A10.5 10.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </section>
         </div>
-    </header>
-    
 
-    <!-- Главный заголовок -->
-    <section class="section">
-        <h1 id="main-title">Modelit</h1>
-        <p id="main-description">Сделай свою 3D модель легко и просто!</p>
-    </section>
-
-    <!-- О проекте -->
-    <section class="section">
-        <h2 id="about-title">О Modelit</h2>
-        <p id="about-description">Modelit — это платформа для генерации и визуализации 3D-моделей. Мы предлагаем простые инструменты, которые помогут воплотить ваши идеи в реальность.</p>
-    </section>
-
-    <!-- Кнопка перехода на страницу генерации -->
-    <section class="section">
-        <h2 id="generate">Опробуй Modelit</h2>
-        <a href="{{ url_for('main_page') }}" class="button" id="try-button">Перейти к генерации</a>
-    </section>
-
-    <!-- Контактная информация -->
-    <section class="section">
-        <h2 id="contact-title">Контакт с нами</h2>
-        <a href="https://github.com/PyanProject/modelit" target="_blank" class="button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.87 10.91.58.11.79-.25.79-.56v-2.07c-3.21.7-3.89-1.39-3.89-1.39-.52-1.31-1.28-1.66-1.28-1.66-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.67 1.25 3.32.96.1-.74.4-1.25.73-1.54-2.56-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.3 1.18-3.12-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11.01 11.01 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.73.82 1.18 1.86 1.18 3.12 0 4.42-2.72 5.39-5.3 5.67.41.35.77 1.05.77 2.11v3.12c0 .31.21.68.8.56A10.5 10.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/>
+        <button class="scroll-arrow left" onclick="scrollToPrevious()">
+            <svg viewBox="0 0 24 24">
+                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
             </svg>
-            GitHub
-        </a>
-    </section>
-
-    <!-- Футер -->
-    <footer class="footer">
-        &copy; Modelit, 2025
-    </footer>
+        </button>
+        <button class="scroll-arrow right" onclick="scrollToNext()">
+            <svg viewBox="0 0 24 24">
+                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+            </svg>
+        </button>
+    </div>
 
     <script>
-        function goToGeneration() {
-        window.location.href = "{{ url_for('main_page') }}"; // Перенаправляем на страницу генерации
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const video = loadingScreen.querySelector('video');
+            const mainContent = document.querySelector('.main-content');
+            const backgroundContainer = document.querySelector('.background-container');
+            
+            video.addEventListener('loadeddata', () => {
+                console.log('Видео загружено');
+            });
+
+            video.addEventListener('error', (e) => {
+                console.error('Ошибка загрузки видео:', e);
+            });
+            
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    video.style.opacity = '1';
+                    
+                    setTimeout(() => {
+                        loadingScreen.classList.add('fade-out');
+                        
+                        setTimeout(() => {
+                            loadingScreen.style.display = 'none';
+                            mainContent.classList.add('visible');
+                            backgroundContainer.classList.add('visible');
+                            updateActiveSection(1);
+                            startAutoScroll();
+                        }, 2000);
+                    }, 4000);
+                }, 100);
+            });
+        });
+
         const translations = {
             ru: {
                 mainTitle: "Modelit",
@@ -238,23 +537,180 @@
             document.getElementById('generate-button').textContent = t.generateButton;
         }
 
-        function handleScroll() {
-            const sections = document.querySelectorAll('.section');
-            const triggerBottom = window.innerHeight;
+        let currentSection = 1;
+        const totalSections = 4;
 
-            sections.forEach(section => {
-                const sectionTop = section.getBoundingClientRect().top;
+        let autoScrollInterval;
+        let userInteractionTimeout;
+        let isFirstScroll = true;
+        const INITIAL_DELAY = 10000; // 4 секунды для первой прокрутки
+        const SCROLL_INTERVAL = 6000; // 3 секунды для последующих прокруток
+        const INACTIVITY_DELAY = 6000; // 2 секунды ожидания после действия пользователя
+        let isUserActive = false;
 
-                if (sectionTop < triggerBottom) {
-                    section.classList.add('visible');
+        // Функция для запуска автоскроллинга
+        function startAutoScroll() {
+            if (!autoScrollInterval) {
+                if (isFirstScroll) {
+                    // Первая прокрутка через 4 секунды
+                    setTimeout(() => {
+                        if (!isUserActive) {
+                            scrollToNext();
+                            isFirstScroll = false;
+                            // Запускаем регулярную прокрутку
+                            autoScrollInterval = setInterval(() => {
+                                if (!isUserActive) {
+                                    scrollToNext();
+                                }
+                            }, SCROLL_INTERVAL);
+                        }
+                    }, INITIAL_DELAY);
                 } else {
-                    section.classList.remove('visible');
+                    // Обычный интервал прокрутки
+                    autoScrollInterval = setInterval(() => {
+                        if (!isUserActive) {
+                            scrollToNext();
+                        }
+                    }, SCROLL_INTERVAL);
+                }
+            }
+        }
+
+        // Функция для остановки автоскроллинга
+        function stopAutoScroll() {
+            if (autoScrollInterval) {
+                clearInterval(autoScrollInterval);
+                autoScrollInterval = null;
+            }
+        }
+
+        // Функция для обработки действий пользователя
+        function handleUserInteraction() {
+            isUserActive = true;
+            stopAutoScroll();
+
+            // Очищаем предыдущий таймер
+            if (userInteractionTimeout) {
+                clearTimeout(userInteractionTimeout);
+            }
+
+            // Устанавливаем новый таймер
+            userInteractionTimeout = setTimeout(() => {
+                isUserActive = false;
+                startAutoScroll();
+            }, INACTIVITY_DELAY);
+        }
+
+        // Добавляем обработчики событий для отслеживания активности пользователя
+        document.addEventListener('mousedown', handleUserInteraction);
+        document.addEventListener('keydown', handleUserInteraction);
+        document.addEventListener('wheel', handleUserInteraction);
+        document.addEventListener('touchstart', handleUserInteraction);
+        document.addEventListener('touchmove', handleUserInteraction);
+
+        // Обновляем существующие функции навигации
+        function scrollToPrevious() {
+            handleUserInteraction();
+            if (currentSection > 1) {
+                currentSection--;
+            } else {
+                currentSection = totalSections;
+            }
+            scrollToSection(currentSection);
+        }
+
+        function scrollToNext() {
+            if (isUserActive) {
+                handleUserInteraction();
+            }
+            if (currentSection < totalSections) {
+                currentSection++;
+            } else {
+                currentSection = 1;
+            }
+            scrollToSection(currentSection);
+        }
+
+        function scrollToSection(number) {
+            const section = document.getElementById(`section${number}`);
+            section.scrollIntoView({ behavior: 'smooth' });
+            updateBackground(number);
+            updateActiveSection(number);
+        }
+
+        function updateBackground(sectionNumber) {
+            document.querySelectorAll('.section-background').forEach(bg => {
+                bg.classList.remove('active');
+            });
+            document.getElementById(`bg${sectionNumber}`).classList.add('active');
+        }
+
+        function updateActiveSection(sectionNumber) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach((section, index) => {
+                if (index + 1 === sectionNumber) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
                 }
             });
         }
 
-        window.addEventListener('scroll', handleScroll);
-        window.addEventListener('load', handleScroll);
+        document.querySelector('.sections-container').addEventListener('scroll', function() {
+            handleUserInteraction();
+            const sections = document.querySelectorAll('.section');
+            
+            sections.forEach((section, index) => {
+                const rect = section.getBoundingClientRect();
+                if (rect.left >= 0 && rect.left < window.innerWidth) {
+                    currentSection = index + 1;
+                    updateBackground(currentSection);
+                    updateActiveSection(currentSection);
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateBackground(1);
+            updateActiveSection(1);
+            document.querySelector('.sections-container').addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    if (e.deltaY > 0) {
+                        scrollToNext();
+                    } else {
+                        scrollToPrevious();
+                    }
+                }
+            });
+            startAutoScroll();
+        });
+
+        // Добавляем функцию для перехода на страницу генерации
+        function goToGeneration() {
+            window.location.href = "{{ url_for('main_page') }}";
+        }
+
+        // Обновляем кнопку в header
+        document.getElementById('generate-button').onclick = goToGeneration;
+
+        // Обновляем кнопку в третьей секции (если она есть)
+        document.getElementById('try-button').onclick = function(e) {
+            e.preventDefault(); // Предотвращаем стандартное поведение ссылки
+            goToGeneration();
+        };
+
+        // Добавляем обработчик клавиатурных стрелок
+        document.addEventListener('keydown', function(e) {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    scrollToPrevious();
+                    break;
+                case 'ArrowRight':
+                    scrollToNext();
+                    break;
+            }
+        });
     </script>
 </body>
 </html>

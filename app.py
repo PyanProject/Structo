@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from embedding_generator import EmbeddingGenerator
 from gan_model import Generator, Discriminator
 from main import generate as newgen
+from functools import wraps
 
 # =============================================================================
 # Инициализация приложения и конфигурация
@@ -76,8 +77,8 @@ check_db_tables()
 # =============================================================================
 
 # Определяем устройство
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device("cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 print(f"Используемое устройство для веб-приложения: {device}")
 
 # Инициализация генератора эмбеддингов с использованием CLIP
@@ -191,6 +192,27 @@ def about():
 @app.route('/generate')
 def main_page():
     return render_template('main_page.html')
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/lk')
+@login_required
+def lk():
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    return render_template('lk.html',
+        username=user.username,
+        email=user.email, 
+        registration_date='В разработке ебать',
+        models_created='ждите чуда',
+        last_activity='пока бэк из запоя выйдет ^_^'
+    )
 
 # =============================================================================
 # Маршруты для аутентификации

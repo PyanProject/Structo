@@ -17,6 +17,7 @@
     
 </head>
 <body>
+
     <div class="top-header" id="header-title">
         <a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">Modelit</a>
     </div>
@@ -103,6 +104,21 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const loadingScreen = document.getElementById('loading-screen');
+        
+        // Ждем полной загрузки страницы
+        window.addEventListener('load', () => {
+            // Добавляем класс для запуска анимации исчезновения
+            loadingScreen.classList.add('fade-out');
+            
+            // Удаляем элемент после завершения анимации
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 1000); // Время должно совпадать с длительностью анимации в CSS
+        });
+    });
+
     // Переключение на форму регистрации
     function switchToRegister() {
         document.getElementById('login-form').style.display = 'none';
@@ -173,7 +189,7 @@
 
             // Кнопка "Личный кабинет"
             document.getElementById('profile-button').onclick = () => {
-                alert('Добро пожаловать в личный кабинет!'); // Здесь можно добавить переход на страницу профиля
+                window.location.href = '/lk';
             };
         }
     }
@@ -238,22 +254,34 @@
                 remember_me: rememberMe,
             }),
         })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new TypeError("Ожидался JSON!");
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    alert('Вы успешно вошли');
                     updateUserUI(username);
+                    closeModal();
 
                     if (rememberMe) {
-                        sessionStorage.setItem('remembered', 'true'); // Сохраняем, если "Запомнить меня" выбрано
+                        sessionStorage.setItem('remembered', 'true');
                     } else {
-                        sessionStorage.setItem('loggedIn', 'true'); // Для временной сессии
+                        sessionStorage.setItem('loggedIn', 'true');
                     }
                 } else {
-                    alert('Неверный логин или пароль');
+                    alert(data.message || 'Неверный логин или пароль');
                 }
             })
-            .catch(error => console.error('Ошибка авторизации:', error));
+            .catch(error => {
+                console.error('Ошибка авторизации:', error);
+                alert('Произошла ошибка при авторизации. Пожалуйста, попробуйте позже.');
+            });
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -310,7 +338,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Регистрация успешна');
+                    closeModal(); // Закрываем модальное окно
                     // После успешной регистрации логиним пользователя
                     submitLogin();
                 } else {
