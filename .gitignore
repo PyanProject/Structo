@@ -8,3 +8,9 @@ shap_e_model_cache/
 venv/
 
 test_outputs/
+
+data/
+datasets/
+rez/
+models/
+temp_emb/
