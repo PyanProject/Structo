@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обучение модели - ModelIT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>ModelIT</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/generate">Генерация</a></li>
+                    <li><a href="/train" class="active">Обучение</a></li>
+                    <li><a href="/info">Информация</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <div class="container">
+                <h2>Обучение модели на датасете Objaverse</h2>
+                <p>На этой странице описаны шаги для обучения модели ModelIT на датасете Objaverse.</p>
+                
+                <div class="training-steps">
+                    <div class="step">
+                        <h3>Шаг 1: Подготовка данных</h3>
+                        <p>Загрузите и подготовьте данные из Objaverse, выполнив следующую команду:</p>
+                        <pre><code>python modelit_test/utils/data_download.py \
+  --limit 1000 \
+  --download_dir data/objaverse/raw \
+  --output_dir data/objaverse</code></pre>
+                        <p>Параметры:</p>
+                        <ul>
+                            <li><code>--limit</code>: Количество объектов для загрузки (рекомендуется начать с 1000 для тестирования)</li>
+                            <li><code>--download_dir</code>: Директория для загрузки сырых данных</li>
+                            <li><code>--output_dir</code>: Директория для выходных данных (метаданные и разбиение)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="step">
+                        <h3>Шаг 2: Запуск обучения</h3>
+                        <p>Запустите процесс обучения, используя следующую команду:</p>
+                        <pre><code>python modelit_test/main.py --train \
+  --data_dir data/objaverse \
+  --output_dir checkpoints/objaverse \
+  --batch_size 8 \
+  --num_epochs 50 \
+  --learning_rate 2e-4</code></pre>
+                        <p>Параметры:</p>
+                        <ul>
+                            <li><code>--train</code>: Флаг для запуска обучения вместо веб-интерфейса</li>
+                            <li><code>--data_dir</code>: Директория с данными</li>
+                            <li><code>--output_dir</code>: Директория для сохранения чекпойнтов</li>
+                            <li><code>--batch_size</code>: Размер батча (рекомендуется меньшее значение для экономии памяти)</li>
+                            <li><code>--num_epochs</code>: Количество эпох обучения</li>
+                            <li><code>--learning_rate</code>: Скорость обучения</li>
+                            <li><code>--resume_from</code>: (опционально) Путь к чекпойнту для продолжения обучения</li>
+                            <li><code>--no_wandb</code>: (опционально) Отключить логирование в Weights & Biases</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="step">
+                        <h3>Шаг 3: Мониторинг обучения</h3>
+                        <p>Процесс обучения можно контролировать несколькими способами:</p>
+                        <ul>
+                            <li>Через логи в консоли</li>
+                            <li>Через лог-файл в директории чекпойнтов</li>
+                            <li>Через Weights & Biases (если настроен)</li>
+                        </ul>
+                        <p>В процессе обучения будут сохраняться чекпойнты в указанной директории. Вы можете использовать их для продолжения обучения или для генерации моделей.</p>
+                    </div>
+                    
+                    <div class="step">
+                        <h3>Шаг 4: Использование обученной модели</h3>
+                        <p>После завершения обучения вы можете использовать полученный чекпойнт для генерации моделей:</p>
+                        <pre><code>python modelit_test/main.py --checkpoint checkpoints/objaverse/checkpoint_best.pt</code></pre>
+                    </div>
+                </div>
+                
+                <div class="training-tips">
+                    <h3>Рекомендации по обучению</h3>
+                    <ul>
+                        <li>Начните с небольшого датасета (1000-5000 объектов) для проверки процесса обучения</li>
+                        <li>Используйте GPU с достаточным объемом памяти (минимум 8 ГБ, рекомендуется 16+ ГБ)</li>
+                        <li>Настройте параметры <code>batch_size</code> и <code>voxel_size</code> в соответствии с доступной памятью</li>
+                        <li>Для длительного обучения рекомендуется использовать <code>wandb</code> для мониторинга</li>
+                        <li>Регулярно проверяйте качество генерации на валидационных данных</li>
+                    </ul>
+                </div>
+                
+                <div class="wandb-setup">
+                    <h3>Настройка Weights & Biases (опционально)</h3>
+                    <p>Для мониторинга обучения вы можете использовать Weights & Biases:</p>
+                    <ol>
+                        <li>Установите библиотеку: <code>pip install wandb</code></li>
+                        <li>Зарегистрируйтесь на <a href="https://wandb.ai" target="_blank">wandb.ai</a></li>
+                        <li>Войдите в систему: <code>wandb login</code></li>
+                        <li>Настройте проект в <code>configs/default.py</code> (параметры <code>wandb_project</code> и <code>wandb_entity</code>)</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 ModelIT. Все права защищены.</p>
+        </div>
+    </footer>
+</body>
+</html> 

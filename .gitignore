@@ -8,3 +8,12 @@ shap_e_model_cache/
 venv/
 
 test_outputs/
+
+data/train/
+
+modelit_test/data/
+
+modelit_test/models/
+
+output/
+

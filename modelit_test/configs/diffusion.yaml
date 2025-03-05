@@ -1,0 +1,15 @@
+# Конфигурация диффузионного процесса
+diffusion:
+  schedule: "linear"   # Тип расписания шума (linear или cosine)
+  num_timesteps: 1000  # Количество шагов диффузии
+  beta_start: 0.0001   # Начальное значение beta
+  beta_end: 0.02       # Конечное значение beta
+
+# Тип предсказания модели
+model_mean_type: "epsilon"  # epsilon: предсказывает шум, direct: предсказывает x_0
+
+# Тип дисперсии модели
+model_var_type: "fixed_small"  # fixed_small, fixed_large или learned
+
+# Тип функции потерь
+loss_type: "mse"  # mse: среднеквадратичная ошибка 

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModelIT - Генерация 3D моделей из текста</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/PLYLoader.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>ModelIT</h1>
+            <nav>
+                <ul>
+                    <li><a href="/" class="active">Главная</a></li>
+                    <li><a href="/generate">Генерация</a></li>
+                    <li><a href="/train">Обучение</a></li>
+                    <li><a href="/info">Информация</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <div class="container">
+                <h2>Добро пожаловать в ModelIT</h2>
+                <p>ModelIT - это инструмент для генерации 3D моделей из текстовых описаний. 
+                Наша система использует диффузионные модели и нейронные сети для создания детализированных 
+                трехмерных объектов на основе ваших текстовых запросов.</p>
+                
+                <div style="text-align: center; margin: 40px 0;">
+                    <img src="{{ url_for('static', filename='img/example.jpg') }}" alt="Пример 3D модели" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                </div>
+                
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; margin: 30px 0;">
+                    <div style="flex: 1; min-width: 250px; margin: 15px; padding: 25px; background-color: #f8f9fa; border-radius: 8px; text-align: center;">
+                        <h3>Генерация моделей</h3>
+                        <p>Создавайте 3D модели из текстовых описаний простым вводом запроса. Генерируйте объекты любой сложности!</p>
+                        <a href="/generate" class="btn" style="display: inline-block; margin-top: 15px;">Начать генерацию</a>
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 250px; margin: 15px; padding: 25px; background-color: #f8f9fa; border-radius: 8px; text-align: center;">
+                        <h3>Обучение собственной модели</h3>
+                        <p>Используйте датасет Objaverse для обучения собственной модели генерации 3D объектов.</p>
+                        <a href="/train" class="btn" style="display: inline-block; margin-top: 15px;">Как обучить модель</a>
+                    </div>
+                </div>
+                
+                <h3>Как это работает?</h3>
+                <p>ModelIT использует многоэтапный процесс для генерации 3D моделей:</p>
+                <ol>
+                    <li><strong>Кодирование текста</strong> - Текстовый запрос преобразуется в эмбеддинги, которые содержат семантическую информацию о запрашиваемом объекте.</li>
+                    <li><strong>Диффузионная модель</strong> - Генерирует латентное представление 3D объекта на основе текстового эмбеддинга.</li>
+                    <li><strong>3D декодер</strong> - Преобразует латентное представление в вокселизированную 3D сетку.</li>
+                    <li><strong>Рендеринг</strong> - Создает визуализацию полученной 3D модели для предварительного просмотра.</li>
+                </ol>
+                
+                <h3>Возможности системы</h3>
+                <ul>
+                    <li>Генерация 3D моделей из текстовых описаний</li>
+                    <li>Поддержка различных параметров генерации (guidance scale, seed)</li>
+                    <li>Сохранение моделей в различных форматах (.obj, .glb)</li>
+                    <li>Возможность предварительного просмотра сгенерированных моделей</li>
+                    <li>Обучение модели на собственных данных</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 ModelIT. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

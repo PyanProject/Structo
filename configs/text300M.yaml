@@ -1,0 +1,20 @@
+# Конфигурация модели text300M
+n_ctx: 2048
+width: 256
+layers: 6
+heads: 4
+dropout: 0.1
+text_embed_dim: 256
+learning_rate: 1e-4
+weight_decay: 0.01
+input_channels: 3
+output_channels: 3
+
+# Параметры диффузии
+beta_schedule: linear
+beta_start: 0.0001
+beta_end: 0.02
+num_timesteps: 1000
+model_mean_type: "epsilon"
+model_var_type: "fixed_small"
+loss_type: "mse" 

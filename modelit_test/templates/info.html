@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Информация о системе - ModelIT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>ModelIT</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/generate">Генерация</a></li>
+                    <li><a href="/train">Обучение</a></li>
+                    <li><a href="/info" class="active">Информация</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <div class="container">
+                <h2>Информация о системе</h2>
+                <p>На этой странице представлена информация о текущей конфигурации системы ModelIT.</p>
+                
+                <div class="system-info">
+                    <div class="info-card">
+                        <h3>Конфигурация системы</h3>
+                        <ul>
+                            <li><span>Операционная система:</span> <span>{{ info.os }}</span></li>
+                            <li><span>Python версия:</span> <span>{{ info.python_version }}</span></li>
+                            <li><span>Количество ядер CPU:</span> <span>{{ info.cpu_count }}</span></li>
+                            <li><span>Доступно RAM:</span> <span>{{ info.memory_gb }} ГБ</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>CUDA информация</h3>
+                        <ul>
+                            <li><span>CUDA доступно:</span> <span>{{ "Да" if info.cuda_available else "Нет" }}</span></li>
+                            {% if info.cuda_available %}
+                            <li><span>CUDA версия:</span> <span>{{ info.cuda_version }}</span></li>
+                            <li><span>Количество GPU:</span> <span>{{ info.gpu_count }}</span></li>
+                            <li><span>Модель GPU:</span> <span>{{ info.gpu_name }}</span></li>
+                            <li><span>Память GPU:</span> <span>{{ info.gpu_memory }} ГБ</span></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>Информация о моделях</h3>
+                        <ul>
+                            <li><span>Текущий чекпойнт:</span> <span>{{ info.checkpoint_path }}</span></li>
+                            <li><span>Размер модели:</span> <span>{{ info.model_size }} МБ</span></li>
+                            <li><span>Модель загружена:</span> <span>{{ "Да" if info.model_loaded else "Нет" }}</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>Зависимости</h3>
+                        <ul>
+                            <li><span>PyTorch:</span> <span>{{ info.dependencies.torch }}</span></li>
+                            <li><span>NumPy:</span> <span>{{ info.dependencies.numpy }}</span></li>
+                            <li><span>Trimesh:</span> <span>{{ info.dependencies.trimesh }}</span></li>
+                            <li><span>Flask:</span> <span>{{ info.dependencies.flask }}</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>Статистика генерации</h3>
+                        <ul>
+                            <li><span>Всего сгенерировано:</span> <span>{{ info.stats.total_generated }}</span></li>
+                            <li><span>Среднее время генерации:</span> <span>{{ info.stats.avg_generation_time }} сек</span></li>
+                            <li><span>Последняя генерация:</span> <span>{{ info.stats.last_generation_time }}</span></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <h3>Ресурсы и документация</h3>
+                    <ul>
+                        <li><a href="https://github.com/yourusername/modelit" target="_blank">GitHub репозиторий</a></li>
+                        <li><a href="https://huggingface.co/docs/diffusers/index" target="_blank">Документация Diffusers</a></li>
+                        <li><a href="https://pytorch.org/docs/stable/index.html" target="_blank">Документация PyTorch</a></li>
+                        <li><a href="https://flask.palletsprojects.com/" target="_blank">Документация Flask</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 ModelIT. Все права защищены.</p>
+        </div>
+    </footer>
+</body>
+</html> 
