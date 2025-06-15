@@ -1,0 +1,125 @@
+# Commands for Structo Server Management
+# -------------------------------------
+
+# Virtual Environment
+# Activate Python virtual environment
+source venv/bin/activate
+
+# Deactivate Python virtual environment
+deactivate
+
+# Services Management
+# ------------------
+
+# Start Services
+# Start main Structo application server
+sudo systemctl start structo
+
+# Start Nginx web server
+sudo systemctl start nginx
+
+# Start proxy server for 3D model generation
+sudo systemctl start proxy-server
+
+# Stop Services
+# Stop main Structo application server
+sudo systemctl stop structo
+
+# Stop Nginx web server
+sudo systemctl stop nginx
+
+# Stop proxy server
+sudo systemctl stop proxy-server
+
+# Restart Services
+# Restart main Structo application server
+sudo systemctl restart structo
+
+# Restart Nginx web server
+sudo systemctl restart nginx
+
+# Restart proxy server for 3D model generation
+sudo systemctl restart proxy-server
+
+# Service Status
+# Check status of main Structo application
+sudo systemctl status structo
+
+# Check status of Nginx web server
+sudo systemctl status nginx
+
+# Check status of proxy server
+sudo systemctl status proxy-server
+
+# Logs
+# View Structo application logs in real-time
+sudo journalctl -u structo -f
+
+# View proxy server logs in real-time
+sudo journalctl -u proxy-server -f
+
+# View Nginx error logs
+sudo tail -f /var/log/nginx/error.log
+
+# View Nginx access logs
+sudo tail -f /var/log/nginx/access.log
+
+# Network
+# Check which services are using which ports
+sudo netstat -tulpn | grep -E ':80|:443|:5000|:5001|:5002'
+
+# Nginx
+# Test Nginx configuration syntax
+sudo nginx -t
+
+# Apply Nginx configuration changes
+sudo cp nginx_structo.conf /etc/nginx/sites-enabled/structo.space
+sudo systemctl reload nginx
+
+# 3D Model Proxy System
+# ---------------------
+
+# Check health of local generation server through proxy
+curl -s https://structo.space/proxy/health
+
+# Check generation progress through proxy
+curl -s https://structo.space/proxy/progress
+
+# List generated 3D models
+ls -la static/models/
+
+# Check disk space usage for models directory
+du -sh static/models/
+
+# Give permissions to models directory
+sudo chmod -R 777 static/models
+
+# Clean up old models (older than 30 days)
+find static/models/ -type f -mtime +30 -exec rm {} \;
+
+# Manual model download from local PC to VDS
+curl -X GET https://structo.space/proxy/download/FILENAME_HERE
+
+# Full System Restart
+# ------------------
+sudo systemctl restart proxy-server
+sudo systemctl restart nginx
+sudo systemctl restart structo
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#ESLI FLASK NE OBNOVLYAETSYA
+#SMOTRIM KAKAYA PROCESS ZANYALA PORT 5001
+
+lsof -i :5003
+
+#ESLI NET NICHEGO TO SMOTRIM ETOY KOMANDOY
+
+netstat -tulpn | grep :5003
+
+# DALEE DELAEM KOMANDY(OBICHNO V SPISKE NE BOLEE 1 PROCESSA, CUZ KAKOY-TO PLOHOY PYTHON FILE ZANIMAET PO PRIKOLY)
+
+kill -9 "PROCESS_ID"
+
+# esli voobshe KRAY: flask ne zapuskaetsya i na portu 5003 net nichego(ili vse vremya zanyat python processom) to ZAPUSKAEM
+
+systemctl daemon-reload

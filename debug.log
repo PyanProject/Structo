@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/project/run_debug.py", line 1, in <module>
+    from app import app
+  File "/project/app.py", line 19, in <module>
+    from transformers import MarianMTModel, MarianTokenizer
+  File "/usr/local/lib/python3.10/dist-packages/transformers/__init__.py", line 26, in <module>
+    from . import dependency_versions_check
+  File "/usr/local/lib/python3.10/dist-packages/transformers/dependency_versions_check.py", line 16, in <module>
+    from .utils.versions import require_version, require_version_core
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/__init__.py", line 27, in <module>
+    from .chat_template_utils import DocstringParsingException, TypeHintParsingException, get_json_schema
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/chat_template_utils.py", line 39, in <module>
+    from torch import Tensor
+ImportError: cannot import name 'Tensor' from 'torch' (unknown location)
