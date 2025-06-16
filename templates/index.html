@@ -1,21 +1,63 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" id="html-document">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modelit | Главная</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Structo | Генерация 3D-моделей</title>
+    
+    <!-- Обновляем favicon с корректным URL-кодированием -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236c43ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'%3E%3C/path%3E%3Cpolyline points='7.5 4.21 12 6.81 16.5 4.21'%3E%3C/polyline%3E%3Cpolyline points='7.5 19.79 7.5 14.6 3 12'%3E%3C/polyline%3E%3Cpolyline points='21 12 16.5 14.6 16.5 19.79'%3E%3C/polyline%3E%3Cpolyline points='3.27 6.96 12 12.01 20.73 6.96'%3E%3C/polyline%3E%3Cline x1='12' y1='22.08' x2='12' y2='12'%3E%3C/line%3E%3C/svg%3E">
+    
+    <link rel="alternate icon" type="image/png" href="favicon.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            margin: 0;
-            font-family: 'Arial', sans-serif;
-            color: #ffffff;
-            overflow-x: hidden;
+        :root {
+            --primary-color: #6c43ff;
+            --accent-color: #ff3571;
+            --dark-bg: #0a0a0a;
+            --medium-bg: #121212;
+            --light-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --text-secondary: #a0a0a0;
+            --transition-slow: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-medium: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-fast: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+            background-color: var(--dark-bg);
+            overflow-x: hidden;
+            line-height: 1.6;
+            transition: background-color 0.8s ease;
+        }
+
+        body.language-transition {
+            background-color: rgb(0, 0, 0); /* Изменено на полностью черный цвет */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header styles */
         .top-header {
             width: 100%;
-            padding: 10px 20px;
+            padding: 1.5rem 2rem;
             position: fixed;
             top: 0;
             left: 0;
@@ -23,238 +65,2216 @@
             justify-content: space-between;
             align-items: center;
             z-index: 100;
-            background-color: rgba(0, 0, 0, 0.8);
+            transition: background-color var(--transition-fast);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .top-header.scrolled {
+            background: linear-gradient(to bottom, rgba(10, 10, 10, 0.9), rgba(10, 10, 10, 0.7));
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         #header-title {
-            font-size: 2rem;
-            font-weight: bold;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-color);
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-button {
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            padding: 0.7rem 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color var(--transition-fast);
+            position: relative;
+        }
+
+        .nav-button::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            transition: width var(--transition-fast);
+        }
+
+        .nav-button:hover::after {
+            width: 100%;
+        }
+
+        .nav-button:hover {
             color: #ffffff;
+        }
+
+        .primary-button {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .primary-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 67, 255, 0.4);
         }
 
         .language-buttons {
-            margin-right: 40px;
             display: flex;
-            gap: 10px;
+            gap: 0.5rem;
         }
 
         .language-buttons button {
-            background-color: #ffffff;
-            color: #000000;
-            border: none;
-            padding: 5px 15px;
-            font-size: 1rem;
-            font-weight: bold;
-            border-radius: 5px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 0.8rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 20px;
             cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s;
+            transition: all var(--transition-fast);
         }
 
         .language-buttons button:hover {
-            background-color: #272727;
-            color: #ffffff;
-            transform: scale(1.05);
+            color: var(--text-color);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
-
-        .section:nth-child(odd) {
-            background-color: #181818;
-        }
-
-        .section:nth-child(even) {
-            background-color: #000000;
-        }
-
-        .section:first-child {
-            background: linear-gradient(-45deg, rgb(151, 5, 255), rgba(0,0,0,1), rgb(255, 0, 0));
-        }
-
-        .section h2 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            color: #ffffff;
-        }
-
-        .section p, .section ul {
-            font-size: 1.2rem;
-            line-height: 1.8;
-            color: #d1d1d1;
-            max-width: 800px;
-        }
-
-        .button {
-            font-size: 1rem;
-            display: inline-flex;
+        /* Hero section */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
             align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-            padding: 15px 30px;
-            background-color: #ffffff;
-            color: #000000;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 5px;
-            transition: background-color 0.3s ease, transform 0.2s;
+            overflow: hidden;
+            padding: 120px 0;
         }
 
-        .button:hover {
-            color: #ffffff;
-            background-color: #202020;
-            transform: scale(1.05);
-        }
-        
-        .button:hover svg {
-            fill: #ffffff;
+        /* Добавляем стили для градиентной линии */
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -125px;
+            left: 0;
+            width: 100%;
+            height: 250px;
+            z-index: 40;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                transparent 20%,
+                rgba(10, 10, 10, 0.3) 35%,
+                rgba(10, 10, 10, 1) 45%,
+                rgba(10, 10, 10, 1) 55%,
+                rgba(10, 10, 10, 0.3) 65%,
+                transparent 80%,
+                transparent 100%
+            );
         }
 
-        .button svg {
-            width: 20px;
-            height: 20px;
-            fill: #141e30;
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title {
+            font-size: 5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fade-in 1s forwards 0.3s;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-description {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fade-in 1s forwards 0.6s;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fade-in 1s forwards 0.9s;
+        }
+
+        .secondary-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            border: none;
+            padding: 0.7rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .secondary-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .gradient-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            transition: all 3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .blob-1 {
+            background: var(--primary-color);
+            width: 500px;
+            height: 500px;
+            top: -250px;
+            left: -200px;
+        }
+
+        .blob-2 {
+            background: var(--accent-color);
+            width: 300px;
+            height: 300px;
+            bottom: -150px;
+            right: -100px;
+        }
+
+        .blob-3 {
+            background: #00eaff;
+            width: 400px;
+            height: 400px;
+            top: 50%;
+            right: 10%;
+            opacity: 0.3;
+        }
+
+        /* Animations */
+        @keyframes fade-in {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Rest of the styles will be updated in next steps */
+        .section {
+            padding: 120px 0;
+            position: relative;
         }
 
         .footer {
             text-align: center;
-            padding: 10px;
-            font-size: 0.9rem;
-            color: #aaaaaa;
-            background-color: rgb(0, 0, 0);
+            padding: 30px;
+            background-color: var(--dark-bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
 
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+            
+            .hero-description {
+                font-size: 1.2rem;
+            }
+            
+            .nav-buttons {
+                gap: 0.5rem;
+            }
+            
+            .nav-button {
+                padding: 0.5rem 0.8rem;
+            }
+        }
+
+        /* Section styles */
         .section {
-            font-size: 4rem;
+            padding: 120px 0;
+            position: relative;
+        }
+
+        .section-header {
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .section-tag {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(108, 67, 255, 0.1);
+            color: var(--primary-color);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 16px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in 0.8s forwards 0.1s;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            line-height: 1.2;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in 0.8s forwards 0.3s;
+            background: linear-gradient(135deg, var(--text-color), #929292);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-description {
+            font-size: 1.2rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in 0.8s forwards 0.5s;
+        }
+
+        /* About section styles */
+        .about-content {
+            position: relative;
+        }
+
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .about-text {
+            opacity: 0;
+            transform: translateX(-30px);
+            animation: slide-in 1s forwards 0.3s;
+        }
+
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fade-in 0.8s forwards;
+        }
+
+        .feature-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(108, 67, 255, 0.2), rgba(255, 53, 113, 0.2));
+            color: var(--primary-color);
+        }
+
+        .feature-content h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .feature-content p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .about-image {
+            opacity: 0;
+            transform: translateX(30px);
+            animation: slide-in 1s forwards 0.6s;
+            position: relative;
+        }
+
+        .model-preview {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            transition: transform var(--transition-medium);
+        }
+
+        .model-preview:hover {
+            transform: translateY(-10px) rotate(2deg);
+        }
+
+        .preview-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 3s var(--transition-medium);
+        }
+
+        .model-preview:hover .preview-img {
+            transform: scale(1.1);
+        }
+
+        .model-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            padding: 30px 20px 20px;
+        }
+
+        .model-stats {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        @keyframes slide-in {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 992px) {
+            .about-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .section-title {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Features section styles */
+        .text-center {
+            text-align: center;
+        }
+
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 80px;
+        }
+
+        .feature-card {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            transition: transform var(--transition-medium), box-shadow var(--transition-medium);
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .feature-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border-color: rgba(108, 67, 255, 0.2);
+        }
+
+        .feature-card-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(108, 67, 255, 0.1), rgba(255, 53, 113, 0.1));
+            margin-bottom: 24px;
+            color: var(--primary-color);
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-color);
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .features-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            padding-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .demo-text {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+
+        .demo-text.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .demo-text h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, var(--text-color), #929292);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .steps-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--transition-medium), transform var(--transition-medium);
+        }
+
+        .step-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .step-content h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .step-content p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .demo-video {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+
+        .demo-video.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .video-container {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .demo-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform var(--transition-medium);
+        }
+
+        .play-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            color: white;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .play-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: rgba(108, 67, 255, 0.8);
+        }
+
+        /* CTA Section styles */
+        .cta-section {
+            position: relative;
+            padding: 150px 0;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Добавляем градиентную линию после секции generate */
+        .cta-section::after {
+            content: '';
+            position: absolute;
+            bottom: -125px;
+            left: 0;
+            width: 100%;
+            height: 250px;
+            z-index: 40;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                transparent 20%,
+                rgba(10, 10, 10, 0.3) 35%,
+                rgba(10, 10, 10, 1) 45%,
+                rgba(10, 10, 10, 1) 55%,
+                rgba(10, 10, 10, 0.3) 65%,
+                transparent 80%,
+                transparent 100%
+            );
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .cta-button {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            text-decoration: none; 
+        }
+
+        .cta-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .cta-blob-1 {
+            background: var(--primary-color);
+            width: 600px;
+            height: 600px;
+            top: -300px;
+            left: -200px;
+            opacity: 0.2;
+        }
+
+        .cta-blob-2 {
+            background: var(--accent-color);
+            width: 400px;
+            height: 400px;
+            bottom: -200px;
+            right: -150px;
+            opacity: 0.2;
+        }
+
+        @media (max-width: 992px) {
+            .feature-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .features-demo {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .feature-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .features::after {
+            content: '';
+            position: absolute;
+            bottom: 0px;
+            left: 0;
+            width: 100%;
+            height: 250px;
+            z-index: 100;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                transparent 20%,
+                rgba(250, 6, 6, 0.3) 35%,
+                rgba(250, 6, 6, 1) 45%,
+                rgba(250, 6, 6, 1) 55%,
+                rgba(250, 6, 6, 0.3) 65%,
+                transparent 80%,
+                transparent 100%
+            );
+        }
+
+        /* Footer styles */
+        .footer {
+            background-color: var(--medium-bg);
+            padding: 80px 0 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+
+        .footer-logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .footer-logo h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .footer-description {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 300px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .footer-links-column h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-color);
+        }
+
+        .footer-links-column ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .footer-links-column li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links-column a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+            position: relative;
+        }
+
+        .footer-links-column a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 1px;
+            bottom: -2px;
+            left: 0;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            transition: width var(--transition-fast);
+        }
+
+        .footer-links-column a:hover {
+            color: var(--text-color);
+        }
+
+        .footer-links-column a:hover::after {
+            width: 100%;
+        }
+
+        .footer-bottom {
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-bottom p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 16px;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+        }
+
+        .social-link:hover {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        @media (max-width: 992px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .footer-links {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .footer-bottom {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+        }
+
+        /* Кнопка прокрутки вверх */
+        .scroll-top-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            box-shadow: 0 4px 20px rgba(108, 67, 255, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all var(--transition-fast);
+        }
+
+        .scroll-top-button.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .scroll-top-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(108, 67, 255, 0.6);
+        }
+
+        /* Прелоадер */
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--dark-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+
+        .preloader.fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader {
+            color: var(--primary-color);
+            animation: pulse 2s infinite;
+            position: relative;
+            z-index: 10000;
+        }
+        
+        .loader-logo {
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            text-align: center;
-            height: 100vh;
-            padding: 20px;
-            box-sizing: border-box;
-            transform: translateY(0px);
-            transition: transform 1s ease-in-out;
+        }
+        
+        .loader-logo.move-to-header {
+            top: 1.8rem;
+            left: 3rem;
+            transform: translateY(0) translateX(0) scale(0.6);
         }
 
-        .section.visible {
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+        }
+
+        /* Улучшенные анимации */
+        .hero-title {
+            animation-duration: 1.2s;
+        }
+
+        .feature-card:hover .feature-card-icon {
+            transform: translateY(-10px);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .gradient-blob {
+            animation: float 10s ease-in-out infinite; /* Увеличено время анимации с 6s до 10s */
+            opacity: 0.4; /* Начальная прозрачность */
+        }
+
+        .blob-1 {
+            animation-delay: 0s;
+        }
+
+        .blob-2 {
+            animation-delay: 3.33s; /* Обновлены задержки для более равномерного распределения */
+        }
+
+        .blob-3 {
+            animation-delay: 6.66s; /* Обновлены задержки для более равномерного распределения */
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.4; /* Увеличена минимальная прозрачность */
+            }
+            50% {
+                transform: translateY(-20px) scale(1.05);
+                opacity: 0.5; /* Уменьшена максимальная прозрачность для более тонкого эффекта */
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.4; /* Соответствует начальной прозрачности */
+            }
+        }
+
+        .model-preview {
+            animation: shadow-pulse 6s infinite;
+        }
+
+        @keyframes shadow-pulse {
+            0% {
+                box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 30px 60px rgba(108, 67, 255, 0.3);
+            }
+            100% {
+                box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        /* Анимации при наведении на кнопки */
+        .primary-button, .secondary-button {
+            overflow: hidden;
+            position: relative;
+        }
+
+        .primary-button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.6);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+
+        .primary-button:hover::after {
+            animation: ripple 0.8s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(30, 30);
+                opacity: 0;
+            }
+        }
+        
+        /* Стили для контейнера логотипа в шапке */
+        #header-logo-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+            height: 60px;
+            margin-left: 1rem; /* Отступ от края */
+        }
+        
+        #header-logo-container .loader-logo {
+            position: static;
+            transform: none;
+            display: flex;
+            align-items: center;
+            flex-direction: row;
+            gap: 10px;
+        }
+        
+        #header-logo-container svg {
+            width: 32px;
+            height: 32px;
+        }
+        
+        #header-logo-container h1 {
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .loader-logo svg {
+            stroke: url(#gradient);
+        }
+        
+        #header-logo-container svg {
+            width: 32px;
+            height: 32px;
+            stroke: url(#gradient);
+        }
+
+        /* Специальные стили для SVG в логотипе */
+        svg #gradient-path {
+            stroke: url(#gradient);
+        }
+        
+        /* Улучшенное позиционирование для плавного перехода */
+        #header-logo-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+            height: 60px;
+            margin-left: 1rem; /* Отступ от края */
+        }
+        
+        #header-logo-container .loader-logo {
+            position: static;
+            transform: none;
+            display: flex;
+            align-items: center;
+            flex-direction: row;
+            margin-left: 0.5rem; /* Небольшой отступ для выравнивания */
+        }
+
+        /* Добавляем новую анимацию для вращения */
+        @keyframes rotate360 {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Обновляем стили для loader-logo */
+        .loader-logo {
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-logo svg {
+            animation: rotate360 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .loader-logo.move-to-header {
+            top: 1.8rem;
+            left: 3rem;
+            transform: translateY(0) translateX(0) scale(0.6);
+        }
+
+        /* Обновляем стили для статичного логотипа */
+        .static-logo {
+            position: absolute;
+            top: 1rem; /* Изменено с 1.8rem */
+            left: 1rem; /* Изменено с 3rem */
+            transform: scale(0.6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Оставляем позиционирование анимированного логотипа прежним */
+        .loader-logo.move-to-header {
+            top: 1.8rem !important;
+            left: 3rem !important;
+            transform: translateY(0) translateX(0) scale(0.6) !important;
+        }
+
+        /* Добавляем стили для оверлея затемнения */
+        .language-transition-overlay {
+            position: fixed;
+            top: 0;
+            left: -300%;
+            width: 400%;
+            height: 100%;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                transparent 25%,
+                rgba(12, 0, 31, 0.8) 40%,
+                rgb(199, 3, 206) 50%,
+                rgba(12, 0, 31, 0.8) 60%,
+                transparent 75%,
+                transparent 100%
+            );
+            pointer-events: none;
+            z-index: 9999;
+            transform: translateX(0);
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.8s cubic-bezier(0.7, 0, 0.3, 1), opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .language-transition-overlay.active {
+            transform: translateX(50%);
             opacity: 1;
-            transform: translateY(0);
+            visibility: visible;
         }
 
-        .section h2, .section p, .section ul, .section .button{
-            transform: translateY(200px);
-            transition: transform 1s ease-in-out;
+        /* Добавляем стили для начальных линий */
+        .initial-line {
+            position: fixed;
+            top: 0;
+            left: -300%;
+            width: 400%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0;
+            transform: translateX(0);
         }
 
-        .section.visible h2, .section.visible p, .section.visible ul, .section.visible .button {
+        .initial-line-1 {
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                transparent 48%,
+                rgba(108, 67, 255, 0.2) 49.5%,
+                rgba(108, 67, 255, 0.8) 50%,
+                rgba(108, 67, 255, 0.2) 50.5%,
+                transparent 52%,
+                transparent 100%
+            );
+            animation: lineMove1 2s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+
+        .initial-line-2 {
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                transparent 48%,
+                rgba(255, 53, 113, 0.2) 49.5%,
+                rgba(255, 53, 113, 0.8) 50%,
+                rgba(255, 53, 113, 0.2) 50.5%,
+                transparent 52%,
+                transparent 100%
+            );
+            animation: lineMove2 2s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+        }
+
+        @keyframes lineMove1 {
+            0% {
+                opacity: 0;
+                transform: translateX(0);
+            }
+            20% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(75%);
+            }
+        }
+
+        @keyframes lineMove2 {
+            0% {
+                opacity: 0;
+                transform: translateX(0);
+            }
+            20% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(75%);
+            }
+        }
+
+        /* Обновляем стили прелоадера */
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--dark-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+
+        .preloader::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Добавляем стили для анимации заголовка */
+        #about-title {
+            opacity: 0;
+            transform: translateX(-100px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #about-title.visible {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateX(0);
         }
-
     </style>
 </head>
 <body>
-    <!-- Верхний блок с заголовком -->
+    <!-- Добавляем оверлей для анимации смены языка -->
+    <div class="language-transition-overlay" id="languageOverlay"></div>
+    
+    <!-- Header -->
     <header class="top-header">
-        <h1 id="header-title">Modelit</h1>
-        <div class="language-buttons">
-            <!-- Новая кнопка "Перейти к генерации" -->
-            <button id="generate-button" onclick="goToGeneration()">Перейти к генерации</button>
-            <button onclick="setLanguage('ru')">RU</button>
-            <button onclick="setLanguage('en')">EN</button>
+        <div class="logo">
+            <!-- Удаляем текстовый заголовок, логотип будет перемещаться сюда -->
+            <div id="header-logo-container"></div>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-button" id="about-nav">О нас</button>
+            <button class="nav-button" id="features-nav">Возможности</button>
+            <button class="primary-button" onclick="goToGeneration()" id="generate-button">Начать генерацию</button>
+            <div class="language-buttons">
+                <button onclick="setLanguage('ru')">RU</button>
+                <button onclick="setLanguage('en')">EN</button>
+            </div>
         </div>
     </header>
-    
 
-    <!-- Главный заголовок -->
-    <section class="section">
-        <h1 id="main-title">Modelit</h1>
-        <p id="main-description">Сделай свою 3D модель легко и просто!</p>
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-background">
+            <div class="gradient-blob blob-1"></div>
+            <div class="gradient-blob blob-2"></div>
+            <div class="gradient-blob blob-3"></div>
+        </div>
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title" id="main-title">Structo</h1>
+                <p class="hero-description" id="main-description">Создавайте потрясающие 3D-модели с помощью искусственного интеллекта</p>
+                <div class="hero-buttons">
+                    <button class="primary-button" onclick="goToGeneration()" id="hero-generate-button">Начать генерацию</button>
+                    <button class="secondary-button" id="learn-more">Узнать больше</button>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <!-- О проекте -->
-    <section class="section">
-        <h2 id="about-title">О Modelit</h2>
-        <p id="about-description">Modelit — это платформа для генерации и визуализации 3D-моделей. Мы предлагаем простые инструменты, которые помогут воплотить ваши идеи в реальность.</p>
+    <!-- О проекте - будет обновлено в следующих этапах -->
+    <section class="section" id="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="section-header">
+                    <span class="section-tag">О нас</span>
+                    <h2 id="about-title" class="section-title">Ещё один проект в мире 3D-моделирования</h2>
+                </div>
+                <div class="about-grid">
+                    <div class="about-text">
+                        <p id="about-description" class="section-description">Structo — это платформа для генерации 3D-моделей по текстовому описанию с помощью искусственного интеллекта. Наша технология превращает ваши идеи в детализированные трехмерные объекты за короткий промежуток времени.</p>
+                        <div class="feature-list">
+                            <div class="feature-item" data-aos="fade-up" data-aos-delay="100">
+                                <div class="feature-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3L20 9L12 15L4 9L12 3Z"></path>
+                                        <path d="M20 9V16L12 22L4 16V9"></path>
+                                    </svg>
+                                </div>
+                                <div class="feature-content">
+                                    <h3>Мгновенная генерация</h3>
+                                    <p>Создавайте модели за минуты, а не часы или дни ручного моделирования</p>
+                                </div>
+                            </div>
+                            <div class="feature-item" data-aos="fade-up" data-aos-delay="200">
+                                <div class="feature-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16V12L8.5 8.5"></path>
+                                    </svg>
+                                </div>
+                                <div class="feature-content">
+                                    <h3>Экономия времени</h3>
+                                    <p>Если Вам нужно творчество, то это не для Вас</p>
+                                </div>
+                            </div>
+                            <div class="feature-item" data-aos="fade-up" data-aos-delay="300">
+                                <div class="feature-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 6L9 17L4 12"></path>
+                                    </svg>
+                                </div>
+                                <div class="feature-content">
+                                    <h3>Простое использование</h3>
+                                    <p>Интуитивный интерфейс, доступный как для новичков, так и для профессионалов</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="about-image">
+                        <div class="model-preview">
+                            <img src="https://images.unsplash.com/photo-1621619856624-42fd193a0661?q=80&w=2058&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="3D модель куба" class="preview-img" id="model-preview-img">
+                            <div class="model-overlay">
+                                <div class="model-stats">
+                                    <div class="stat">
+                                        <span class="stat-value">3D</span>
+                                        <span class="stat-label">Формат</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-value">AI</span>
+                                        <span class="stat-label">Генерация</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-value">10с</span>
+                                        <span class="stat-label">Время</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <!-- Кнопка перехода на страницу генерации -->
-    <section class="section">
-        <h2 id="generate">Опробуй Modelit</h2>
-        <a href="{{ url_for('main_page') }}" class="button" id="try-button">Перейти к генерации</a>
+    <!-- Секция с возможностями -->
+    <section class="section" id="features">
+        <div class="container">
+            <div class="features-content">
+                <div class="section-header text-center">
+                    <span class="section-tag">Возможности</span>
+                    <h2 id="features-title" class="section-title">Создавайте 3D-модели силой мысли</h2>
+                    <p class="section-description">Откройте для себя новые горизонты в мире 3D-моделирования с помощью нашей платформы</p>
+                </div>
+                
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+                                <path d="M12 12v9"></path>
+                                <path d="m16 16-4-4-4 4"></path>
+                            </svg>
+                        </div>
+                        <h3>Текстовое описание</h3>
+                        <p>Опишите словами желаемую модель, и наш ИИ создаст её за считанные минуты</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                        </div>
+                        <h3>Редактирование</h3>
+                        <p>Наша модель генерирует одно и то же, но Вы можете попытаться</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" x2="22" y1="12" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                        </div>
+                        <h3>Экспорт</h3>
+                        <p>Скачивайте модели в популярных форматах для дальнейшего использования в любых 3D-приложениях</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+                                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+                                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+                            </svg>
+                        </div>
+                        <h3>Коллекции</h3>
+                        <p>Сохраняйте и организуйте свои модели в личном кабинете для быстрого доступа</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 3H5a2 2 0 0 0-2 2v4"></path>
+                                <path d="M9 21H5a2 2 0 0 1-2-2v-4"></path>
+                                <path d="M15 3h4a2 2 0 0 1 2 2v4"></path>
+                                <path d="M15 21h4a2 2 0 0 0 2-2v-4"></path>
+                                <path d="M9 9h6v6H9z"></path>
+                            </svg>
+                        </div>
+                        <h3>Масштабирование</h3>
+                        <p>Настраивайте размеры и пропорции моделей для идеального соответствия вашим требованиям</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-card-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </div>
+                        <h3>Качество</h3>
+                        <p>Получайте модели разной степени детализации в зависимости от выбранного тарифного плана</p>
+                    </div>
+                </div>
+                
+                <div class="features-demo">
+                    <div class="demo-text">
+                        <h3>Как это работает</h3>
+                        <ol class="steps-list">
+                            <li class="step-item">
+                                <span class="step-number">1</span>
+                                <div class="step-content">
+                                    <h4>Опишите модель</h4>
+                                    <p>Введите текстовое описание модели, которую вы хотите создать</p>
+                                </div>
+                            </li>
+                            <li class="step-item">
+                                <span class="step-number">2</span>
+                                <div class="step-content">
+                                    <h4>Дождитесь генерации</h4>
+                                    <p>Наш ИИ обработает ваш запрос и создаст 3D-модель за несколько минут</p>
+                                </div>
+                            </li>
+                            <li class="step-item">
+                                <span class="step-number">3</span>
+                                <div class="step-content">
+                                    <h4>Скачайте результат</h4>
+                                    <p>Получите готовую модель в удобном формате для дальнейшего использования</p>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                    <div class="demo-video">
+                        <div class="video-container">
+                            <img src="https://images.unsplash.com/photo-1697898783543-18651b0db28f?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Демонстрация работы Structo" class="demo-img" id="demo-preview-img">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <!-- Контактная информация -->
-    <section class="section">
-        <h2 id="contact-title">Контакт с нами</h2>
-        <a href="https://github.com/PyanProject/modelit" target="_blank" class="button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.87 10.91.58.11.79-.25.79-.56v-2.07c-3.21.7-3.89-1.39-3.89-1.39-.52-1.31-1.28-1.66-1.28-1.66-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.67 1.25 3.32.96.1-.74.4-1.25.73-1.54-2.56-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.3 1.18-3.12-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11.01 11.01 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.59.23 2.77.11 3.06.73.82 1.18 1.86 1.18 3.12 0 4.42-2.72 5.39-5.3 5.67.41.35.77 1.05.77 2.11v3.12c0 .31.21.68.8.56A10.5 10.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/>
-            </svg>
-            GitHub
-        </a>
+    <!-- Секция с призывом к действию -->
+    <section class="section cta-section" id="generate">
+        <div class="container">
+            <div class="cta-content">
+                <h2 id="cta-title" class="section-title">Готовы создать свою 3D-модель?</h2>
+                <p class="section-description">Начните генерировать уникальные 3D-объекты прямо сейчас</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('main_page') }}" class="primary-button cta-button" id="try-button">Начать генерацию</a>
+                    <a href="https://github.com/PyanProject/structo" target="_blank" class="secondary-button cta-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
+                            <path d="M9 18c-4.51 2-5-2-7-2"></path>
+                        </svg>
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="cta-background">
+            <div class="gradient-blob cta-blob-1"></div>
+            <div class="gradient-blob cta-blob-2"></div>
+        </div>
+        
     </section>
 
     <!-- Футер -->
     <footer class="footer">
-        &copy; Modelit, 2025
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <h2 id="footer-title">Structo</h2>
+                    <p class="footer-description" style="text-align: center;">Превращаем текст в трехмерные модели</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-links-column">
+                        <h3>Компания</h3>
+                        <ul>
+                            <li><a href="#about">О нас</a></li>
+                            <li><a href="#features">Возможности</a></li>
+                            <li><a href="#generate">Генерация</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-links-column">
+                        <h3>Ресурсы</h3>
+                        <ul>
+                            <li><a href="https://github.com/PyanProject/structo" target="_blank">GitHub</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-links-column">
+                        <h3>Свяжитесь с нами</h3>
+                        <ul>
+                            <li><a href="mailto:pyanproject@gmail.com">pyanproject@gmail.com</a></li>
+                            <li><a href="#">Telegram</a></li>
+                            <li><a href="#">Discord</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; Structo, 2024-2025. Все права защищены.</p>
+                <div class="footer-social">
+                    <!-- Удалены ссылки на Twitter и Instagram -->
+                    <a href="https://github.com/PyanProject/structo" target="_blank" class="social-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
+                            <path d="M9 18c-4.51 2-5-2-7-2"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
     </footer>
 
+    <!-- Кнопка прокрутки вверх -->
+    <button id="scroll-to-top" class="scroll-top-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m18 15-6-6-6 6"/>
+        </svg>
+    </button>
+
+    <!-- Прелоадер -->
+    <div id="preloader" class="preloader">
+        <div class="initial-line initial-line-1"></div>
+        <div class="initial-line initial-line-2"></div>
+        <div class="loader-logo" id="loader-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="var(--primary-color)" />
+                        <stop offset="100%" stop-color="var(--accent-color)" />
+                    </linearGradient>
+                </defs>
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
     <script>
         function goToGeneration() {
-        window.location.href = "{{ url_for('main_page') }}"; // Перенаправляем на страницу генерации
+            window.location.href = "{{ url_for('main_page') }}";
         }
+        
         const translations = {
             ru: {
-                mainTitle: "Modelit",
-                mainDescription: "Сделай свою 3D модель легко и просто!",
-                aboutTitle: "О Modelit",
-                aboutDescription: "Modelit — это платформа для генерации и визуализации 3D-моделей. Мы предлагаем простые инструменты, которые помогут воплотить ваши идеи в реальность.",
-                tryTitle: "Опробуй Modelit",
-                tryButton: "Перейти к генерации",
-                contactTitle: "Контакт с нами",
-                generateButton: "Перейти к генерации"
+                mainTitle: "Structo",
+                mainDescription: "Создавайте потрясающие 3D-модели с помощью искусственного интеллекта",
+                aboutTitle: "По-настоящему российский проект в мире 3D-моделирования",
+                aboutDescription: "Structo — это платформа для генерации 3D-моделей по текстовому описанию с помощью искусственного интеллекта. Наша технология превращает ваши идеи в детализированные трехмерные объекты за короткий промежуток времени.",
+                generateButton: "Начать генерацию",
+                learnMore: "Узнать больше",
+                aboutNav: "О нас",
+                featuresNav: "Возможности",
+                featuresTitle: "Создавайте 3D-модели силой мысли",
+                ctaTitle: "Готовы создать свою 3D-модель?",
+                
+                // Секция о нас - особенности
+                featureInstantTitle: "Быстрая генерация",
+                featureInstantDesc: "Создавайте модели за минуты, а не часы или дни ручного моделирования",
+                featureTimeTitle: "Экономия времени",
+                featureTimeDesc: "Если Вам нужно воплотить свою идею в жизнь, то наш сервис для Вас",
+                featureSimpleTitle: "Простое использование",
+                featureSimpleDesc: "Интуитивный интерфейс, доступный как для новичков, так и для профессионалов",
+                
+                // Форматы и статистика
+                formatLabel: "Формат",
+                generationLabel: "Генерация",
+                timeLabel: "Время",
+                
+                // Секция возможностей
+                featuresDesc: "Откройте для себя новые горизонты в мире 3D-моделирования с помощью нашей платформы",
+                featureTextTitle: "Текстовое описание",
+                featureTextDesc: "Опишите словами желаемую модель, и наш ИИ создаст её буквально за несколько минут",
+                featureEditTitle: "Редактирование",
+                featureEditDesc: "Вы можете редактировать полученный результат для его улучшения",
+                featureExportTitle: "Экспорт",
+                featureExportDesc: "Скачивайте модели в популярных форматах для дальнейшего использования в любых 3D-приложениях",
+                featureCollectionsTitle: "Коллекции",
+                featureCollectionsDesc: "Сохраняйте и организуйте свои модели в личном кабинете для быстрого доступа",
+                featureScaleTitle: "Масштабирование",
+                featureScaleDesc: "Настраивайте размеры и пропорции моделей для идеального соответствия вашим требованиям",
+                featureQualityTitle: "Качество",
+                featureQualityDesc: "Получайте модели разной степени детализации в зависимости от выбранного тарифного плана",
+                
+                // Секция "Как это работает"
+                howItWorksTitle: "Как это работает",
+                step1Title: "Опишите модель",
+                step1Desc: "Введите текстовое описание модели, которую вы хотите создать",
+                step2Title: "Дождитесь генерации",
+                step2Desc: "Наш ИИ обработает ваш запрос и создаст 3D-модель за несколько минут",
+                step3Title: "Скачайте результат",
+                step3Desc: "Получите готовую модель в удобном формате для дальнейшего использования",
+                
+                // CTA секция
+                ctaDesc: "Начните генерировать уникальные 3D-объекты прямо сейчас",
+                
+                // Футер
+                footerSlogan: "Превращаем текст в трехмерные модели",
+                footerCompany: "Компания",
+                footerResources: "Ресурсы",
+                footerContact: "Свяжитесь с нами",
+                footerDocs: "Документация",
+                footerAPI: "API",
+                footerRights: "Все права защищены.",
+                
+                // Дополнительные тексты
+                demoVideoAlert: "Здесь будет показано демо-видео работы платформы",
+                
+                // Альтернативные тексты изображений
+                modelPreviewAlt: "3D модель куба",
+                demoPreviewAlt: "Демонстрация работы Structo"
             },
             en: {
-                mainTitle: "Modelit",
-                mainDescription: "Create your 3D model easily and quickly!",
-                aboutTitle: "About Modelit",
-                aboutDescription: "Modelit is a platform for generating and visualizing 3D models. We provide simple tools to bring your ideas to life.",
-                tryTitle: "Try Modelit",
-                tryButton: "Go to Generation",
-                contactTitle: "Contact Us",
-                generateButton: "Go to Generation"
+                mainTitle: "Structo",
+                mainDescription: "Create amazing 3D models with artificial intelligence",
+                aboutTitle: "Truly Russian project in the world of 3D modeling",
+                aboutDescription: "Structo is a platform for generating 3D models from text descriptions using artificial intelligence. Our technology turns your ideas into detailed three-dimensional objects in a short period of time.",
+                generateButton: "Start Generation",
+                learnMore: "Learn More",
+                aboutNav: "About",
+                featuresNav: "Features",
+                featuresTitle: "Create 3D models with the power of thought",
+                ctaTitle: "Ready to create your 3D model?",
+                
+                // About section features
+                featureInstantTitle: "Not instant generation",
+                featureInstantDesc: "Create models in minutes, not hours or days of manual modeling",
+                featureTimeTitle: "Time Saving",
+                featureTimeDesc: "If you need creativity, then this is not for you",
+                featureSimpleTitle: "Easy to Use",
+                featureSimpleDesc: "Intuitive interface accessible for both beginners and professionals",
+                
+                // Formats and statistics
+                formatLabel: "Format",
+                generationLabel: "Generation",
+                timeLabel: "Time",
+                
+                // Features section
+                featuresDesc: "Discover new horizons in the world of 3D modeling with our platform",
+                featureTextTitle: "Text Description",
+                featureTextDesc: "Describe the desired model in words, and our AI will create it in minutes",
+                featureEditTitle: "Editing",
+                featureEditDesc: "You can edit the result to improve it",
+                featureExportTitle: "Export",
+                featureExportDesc: "Download models in popular formats for further use in any 3D applications",
+                featureCollectionsTitle: "Collections",
+                featureCollectionsDesc: "Save and organize your models in your personal account for quick access",
+                featureScaleTitle: "Scaling",
+                featureScaleDesc: "Adjust the size and proportions of models to perfectly match your requirements",
+                featureQualityTitle: "Quality",
+                featureQualityDesc: "Get models with varying levels of detail depending on your subscription plan",
+                
+                // How It Works section
+                howItWorksTitle: "How It Works",
+                step1Title: "Describe the Model",
+                step1Desc: "Enter a text description of the model you want to create",
+                step2Title: "Wait for Generation",
+                step2Desc: "Our AI will process your request and create a 3D model in minutes",
+                step3Title: "Download the Result",
+                step3Desc: "Get the finished model in a convenient format for further use",
+                
+                // CTA section
+                ctaDesc: "Start generating unique 3D objects right now",
+                
+                // Footer
+                footerSlogan: "Transforming text into three-dimensional models",
+                footerCompany: "Company",
+                footerResources: "Resources",
+                footerContact: "Contact Us",
+                footerDocs: "Documentation",
+                footerAPI: "API",
+                footerRights: "All rights reserved.",
+                
+                // Additional texts
+                demoVideoAlert: "Here will be a demo video of the platform's operation",
+                
+                // Альтернативные тексты изображений
+                modelPreviewAlt: "3D cube model",
+                demoPreviewAlt: "Structo platform demonstration"
             }
         };
 
         function setLanguage(lang) {
-            const t = translations[lang];
-            document.getElementById('main-title').textContent = t.mainTitle;
-            document.getElementById('main-description').textContent = t.mainDescription;
-            document.getElementById('about-title').textContent = t.aboutTitle;
-            document.getElementById('about-description').textContent = t.aboutDescription;
-            document.getElementById('generate').textContent = t.tryTitle;
-            document.getElementById('try-button').textContent = t.tryButton;
-            document.getElementById('contact-title').textContent = t.contactTitle;
-            document.getElementById('generate-button').textContent = t.generateButton;
+            const overlay = document.getElementById('languageOverlay');
+            document.body.classList.add('language-transition');
+            
+            // Активируем анимацию линии
+            overlay.classList.add('active');
+            
+            // Ждем, пока линия дойдет до середины экрана для смены языка
+            setTimeout(() => {
+                const t = translations[lang];
+                console.log(lang);
+                
+                // Существующий код смены языка
+                document.getElementById('html-document').setAttribute('lang', lang);
+                localStorage.setItem('preferredLanguage', lang);
+                
+                // Основной заголовок и описание
+                document.getElementById('main-title').textContent = t.mainTitle;
+                document.getElementById('main-description').textContent = t.mainDescription;
+                
+                // Навигация
+                document.getElementById('about-nav').textContent = t.aboutNav;
+                document.getElementById('features-nav').textContent = t.featuresNav;
+                document.getElementById('generate-button').textContent = t.generateButton;
+                document.getElementById('learn-more').textContent = t.learnMore;
+                document.getElementById('hero-generate-button').textContent = t.generateButton;
+                
+                // Секция о нас - включая тег секции
+                document.querySelector('#about .section-tag').textContent = t.aboutNav;
+                document.getElementById('about-title').textContent = t.aboutTitle;
+                document.getElementById('about-description').textContent = t.aboutDescription;
+                
+                // Особенности в секции "О нас"
+                const featureItems = document.querySelectorAll('.feature-item');
+                featureItems[0].querySelector('h3').textContent = t.featureInstantTitle;
+                featureItems[0].querySelector('p').textContent = t.featureInstantDesc;
+                featureItems[1].querySelector('h3').textContent = t.featureTimeTitle;
+                featureItems[1].querySelector('p').textContent = t.featureTimeDesc;
+                featureItems[2].querySelector('h3').textContent = t.featureSimpleTitle;
+                featureItems[2].querySelector('p').textContent = t.featureSimpleDesc;
+                
+                // Статистика модели
+                const stats = document.querySelectorAll('.stat-label');
+                stats[0].textContent = t.formatLabel;
+                stats[1].textContent = t.generationLabel;
+                stats[2].textContent = t.timeLabel;
+                
+                // Секция возможностей - включая тег секции
+                document.querySelector('#features .section-tag').textContent = t.featuresNav;
+                document.getElementById('features-title').textContent = t.featuresTitle;
+                document.querySelector('#features .section-description').textContent = t.featuresDesc;
+                
+                // Карточки возможностей
+                const featureCards = document.querySelectorAll('.feature-card');
+                featureCards[0].querySelector('h3').textContent = t.featureTextTitle;
+                featureCards[0].querySelector('p').textContent = t.featureTextDesc;
+                featureCards[1].querySelector('h3').textContent = t.featureEditTitle;
+                featureCards[1].querySelector('p').textContent = t.featureEditDesc;
+                featureCards[2].querySelector('h3').textContent = t.featureExportTitle;
+                featureCards[2].querySelector('p').textContent = t.featureExportDesc;
+                featureCards[3].querySelector('h3').textContent = t.featureCollectionsTitle;
+                featureCards[3].querySelector('p').textContent = t.featureCollectionsDesc;
+                featureCards[4].querySelector('h3').textContent = t.featureScaleTitle;
+                featureCards[4].querySelector('p').textContent = t.featureScaleDesc;
+                featureCards[5].querySelector('h3').textContent = t.featureQualityTitle;
+                featureCards[5].querySelector('p').textContent = t.featureQualityDesc;
+                
+                // Как это работает
+                document.querySelector('.demo-text h3').textContent = t.howItWorksTitle;
+                
+                // Шаги
+                const steps = document.querySelectorAll('.step-item');
+                steps[0].querySelector('h4').textContent = t.step1Title;
+                steps[0].querySelector('p').textContent = t.step1Desc;
+                steps[1].querySelector('h4').textContent = t.step2Title;
+                steps[1].querySelector('p').textContent = t.step2Desc;
+                steps[2].querySelector('h4').textContent = t.step3Title;
+                steps[2].querySelector('p').textContent = t.step3Desc;
+                
+                // CTA секция
+                document.getElementById('cta-title').textContent = t.ctaTitle;
+                document.querySelector('#generate .section-description').textContent = t.ctaDesc;
+                document.getElementById('try-button').textContent = t.generateButton;
+                
+                // Футер
+                document.getElementById('footer-title').textContent = t.mainTitle;
+                document.querySelector('.footer-description').textContent = t.footerSlogan;
+                
+                const footerHeadings = document.querySelectorAll('.footer-links-column h3');
+                footerHeadings[0].textContent = t.footerCompany;
+                footerHeadings[1].textContent = t.footerResources;
+                footerHeadings[2].textContent = t.footerContact;
+                
+                const footerLinks = document.querySelectorAll('.footer-links-column a');
+                footerLinks[0].textContent = t.aboutNav;
+                footerLinks[1].textContent = t.featuresNav;
+                footerLinks[2].textContent = t.generateButton;
+                footerLinks[3].textContent = "GitHub";
+                
+                // Копирайт
+                document.querySelector('.footer-bottom p').textContent = `© Structo, 2024-2025. ${t.footerRights}`;
+                
+                // Добавляем эффект анимации при смене языка
+                document.querySelectorAll('.section-title, .section-description, h3, h4, p').forEach(elem => {
+                    elem.style.animation = 'fade-in 0.5s forwards';
+                });
+                
+                // Альтернативные тексты изображений
+                document.getElementById('model-preview-img').setAttribute('alt', t.modelPreviewAlt);
+                document.getElementById('demo-preview-img').setAttribute('alt', t.demoPreviewAlt);
+                
+                // После обновления всех текстов, запускаем анимацию исчезновения оверлея
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                }, 300);
+                
+            }, 300); // Время равно длительности анимации затемнения
+
+            // После завершения анимации убираем классы
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                document.body.classList.remove('language-transition');
+            }, 600);
+
+            saveCurrentLanguage(lang);
         }
 
-        function handleScroll() {
+        // Функция для управления прелоадером и анимацией логотипа
+        window.addEventListener('load', function() {
+            const loaderLogo = document.getElementById('loader-logo');
+            const headerLogoContainer = document.getElementById('header-logo-container');
+            const preloader = document.getElementById('preloader');
+            const mainContent = document.querySelectorAll('.hero, .section');
+            
+            // Сначала позиционируем контейнер в хедере для корректного расположения
+            headerLogoContainer.style.position = 'relative';
+            
+            // Скрываем основной контент до завершения анимации
+            mainContent.forEach(elem => {
+                elem.style.opacity = '0';
+                elem.style.transition = 'opacity 0.8s ease';
+            });
+
+            getCurrentLanguage();
+            
+            // Ждем завершения анимации вращения
+            setTimeout(function() {
+                // Анимируем перемещение логотипа в шапку
+                loaderLogo.classList.add('move-to-header');
+                
+                // После завершения перемещения логотипа
+                setTimeout(function() {
+                    // Создаем постоянный логотип в шапке
+                    const headerLogo = document.createElement('div');
+                    headerLogo.className = 'loader-logo-static';
+                    headerLogo.style.display = 'flex';
+                    headerLogo.style.flexDirection = 'row';
+                    headerLogo.style.alignItems = 'center';
+                    headerLogo.style.margin = '0';
+                    headerLogo.style.position = 'absolute';
+                    headerLogo.style.top = '0.8rem';
+                    headerLogo.style.left = '0.43rem';
+                    headerLogo.style.transform = 'scale(0.9)';
+                    headerLogo.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <defs>
+                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="var(--primary-color)" />
+                                    <stop offset="100%" stop-color="var(--accent-color)" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                            <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                            <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    `;
+                    headerLogoContainer.appendChild(headerLogo);
+                    
+                    // Скрываем прелоадер после анимации логотипа
+                    preloader.classList.add('fade-out');
+                    
+                    // Показываем основной контент
+                    setTimeout(function() {
+                        mainContent.forEach(elem => {
+                            elem.style.opacity = '1';
+                        });
+                    }, 400);
+                }, 1200);
+            }, 1000); // Ждем 1 секунду для завершения вращения
+            
+            // Инициализация параллакс элементов
+            document.querySelectorAll('.gradient-blob').forEach((blob, index) => {
+                blob.setAttribute('data-speed', (0.1 + index * 0.05).toString());
+            });
+            
+            // Добавляем класс parallax-elem к элементам с параллаксом
+            document.querySelectorAll('.section-tag, .section-title').forEach(elem => {
+                elem.classList.add('parallax-elem');
+                elem.setAttribute('data-speed', '0.05');
+            });
+            
+            // Добавление эффекта плавного скролла для всех внутренних ссылок
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+            
+            animateOnScroll();
+        });
+        
+        // Управление кнопкой прокрутки вверх
+        const scrollTopButton = document.getElementById('scroll-to-top');
+        
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                scrollTopButton.classList.add('visible');
+            } else {
+                scrollTopButton.classList.remove('visible');
+            }
+        });
+        
+        scrollTopButton.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // Изменение стиля хедера при прокрутке
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.top-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+            
+            // Параллакс эффект для фоновых элементов
+            parallaxScroll();
+        });
+        
+        // Функция для создания эффекта параллакса при скролле
+        function parallaxScroll() {
+            const scrollPosition = window.pageYOffset;
+            
+            // Параллакс для блобов в герое
+            const heroBlobs = document.querySelectorAll('.hero .gradient-blob');
+            heroBlobs.forEach(blob => {
+                const speed = parseFloat(blob.getAttribute('data-speed') || 0.1);
+                const yPos = -scrollPosition * speed;
+                blob.style.transform = `translateY(${yPos}px)`;
+            });
+            
+            // Параллакс для секций при скролле
             const sections = document.querySelectorAll('.section');
-            const triggerBottom = window.innerHeight;
-
             sections.forEach(section => {
-                const sectionTop = section.getBoundingClientRect().top;
-
-                if (sectionTop < triggerBottom) {
-                    section.classList.add('visible');
-                } else {
-                    section.classList.remove('visible');
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+                
+                if (scrollPosition > sectionTop - window.innerHeight && 
+                    scrollPosition < sectionTop + sectionHeight) {
+                    const speed = 0.3;
+                    const yPos = (scrollPosition - sectionTop) * speed;
+                    
+                    // Находим элементы для эффекта параллакса внутри секции
+                    const parallaxElems = section.querySelectorAll('.parallax-elem');
+                    parallaxElems.forEach(elem => {
+                        const elemSpeed = parseFloat(elem.getAttribute('data-speed') || 0.05);
+                        elem.style.transform = `translateY(${yPos * elemSpeed}px)`;
+                    });
+                }
+            });
+            
+            // Плавное появление при скролле
+            animateOnScroll();
+        }
+        
+        // Прокрутка к секциям по нажатию на кнопки навигации
+        document.getElementById('about-nav').addEventListener('click', () => {
+            document.getElementById('about').scrollIntoView({behavior: 'smooth'});
+        });
+        
+        document.getElementById('features-nav').addEventListener('click', () => {
+            document.getElementById('features').scrollIntoView({behavior: 'smooth'});
+        });
+        
+        document.getElementById('learn-more').addEventListener('click', () => {
+            document.getElementById('about').scrollIntoView({behavior: 'smooth'});
+        });
+        
+        // Функция для анимации элементов при скролле
+        function animateOnScroll() {
+            const elements = document.querySelectorAll('.section-tag, .section-title:not(#about-title), .section-description, .about-text, .about-image, .feature-item, .feature-card, .demo-text, .demo-video, .step-item');
+            const aboutTitle = document.getElementById('about-title');
+            
+            // Специальная проверка для about-title
+            if (aboutTitle) {
+                const elementPosition = aboutTitle.getBoundingClientRect().top;
+                const screenPosition = window.innerHeight / 1.3;
+                
+                if (elementPosition < screenPosition) {
+                    aboutTitle.classList.add('visible');
+                }
+            }
+            
+            // Существующая анимация для остальных элементов
+            elements.forEach(element => {
+                const elementPosition = element.getBoundingClientRect().top;
+                const screenPosition = window.innerHeight / 1.3;
+                
+                if (elementPosition < screenPosition) {
+                    element.classList.add('visible');
+                    element.style.opacity = '1';
+                    element.style.transform = 
+                        element.classList.contains('about-text') || element.classList.contains('demo-text') ? 'translateX(0)' : 
+                        element.classList.contains('about-image') || element.classList.contains('demo-video') ? 'translateX(0)' : 
+                        'translateY(0)';
                 }
             });
         }
+        
+        // Убедимся, что функция вызывается при скролле
+        window.addEventListener('scroll', animateOnScroll);
+        // Вызовем функцию один раз при загрузке для элементов, которые уже видны
+        window.addEventListener('load', animateOnScroll);
+        
+        // Добавляем небольшую задержку для каждой карточки функций
+        document.querySelectorAll('.feature-card').forEach((card, index) => {
+            card.style.transitionDelay = `${0.1 * index}s`;
+        });
+        
+        // Добавляем небольшую задержку для каждого шага
+        document.querySelectorAll('.step-item').forEach((step, index) => {
+            step.style.transitionDelay = `${0.2 * index}s`;
+        });
+        
+        // Обработка клика на кнопку воспроизведения
+        document.querySelector('.play-button').addEventListener('click', function() {
+            // Получаем текущий активный язык
+            const currentLang = document.getElementById('html-document').getAttribute('lang') || 'ru';
+            alert(translations[currentLang].demoVideoAlert);
+        });
+        
+        // Добавление эффекта hover на карточки и кнопки
+        document.querySelectorAll('.feature-card, .primary-button, .secondary-button').forEach(elem => {
+            elem.addEventListener('mouseenter', function() {
+                this.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            });
+        });
+        async function getCurrentLanguage() {
+            const response = await fetch('/set_language', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
 
-        window.addEventListener('scroll', handleScroll);
-        window.addEventListener('load', handleScroll);
+            const data = await response.json();
+            setLanguage(data.lang);
+            console.log("Текущий язык: " + data.lang);
+        }
+
+        async function saveCurrentLanguage(lang) {
+            const response = await fetch('/set_language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lang: lang })
+            });
+            console.log("Изменены языковые настройки на "+lang);
+            const data = await response.json();
+            console.log("Язык на сервере: ", data.lang);
+        }
     </script>
 </body>
 </html>
