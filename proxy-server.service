@@ -1,0 +1,16 @@
+[Unit]
+Description=Structo Proxy Server for 3D Model Generation
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/project
+ExecStart=/usr/bin/python3 /project/proxy_server.py
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=structo-proxy
+
+[Install]
+WantedBy=multi-user.target 

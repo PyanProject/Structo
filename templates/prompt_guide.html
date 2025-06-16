@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structo - Гайд по промптам</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/prompt_guide.css') }}">
+
+    <!-- Обновляем favicon с корректным URL-кодированием -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236c43ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'%3E%3C/path%3E%3Cpolyline points='7.5 4.21 12 6.81 16.5 4.21'%3E%3C/polyline%3E%3Cpolyline points='7.5 19.79 7.5 14.6 3 12'%3E%3C/polyline%3E%3Cpolyline points='21 12 16.5 14.6 16.5 19.79'%3E%3C/polyline%3E%3Cpolyline points='3.27 6.96 12 12.01 20.73 6.96'%3E%3C/polyline%3E%3Cline x1='12' y1='22.08' x2='12' y2='12'%3E%3C/line%3E%3C/svg%3E">
+    
+    <link rel="alternate icon" type="image/png" href="favicon.png">
+    
+    <!-- Подключаем шрифты -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Подключаем кастомный JavaScript для страницы гайда -->
+    <script src="{{ url_for('static', filename='js/prompt_guide.js') }}"></script>
+</head>
+<body>
+
+    <div class="page-container">
+        <!-- Шапка сайта -->
+        <header class="header">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#6B5CE7" />
+                            <stop offset="100%" stop-color="#FF5E93" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                    <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                    <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <a href="{{ url_for('index') }}" class="logo-text">Structo</a>
+            </div>
+            <div class="header-right">
+                <div class="lang-selector">
+                    <button class="lang-btn active">RU</button>
+                    <button class="lang-btn">EN</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Градиентный фон -->
+            <div class="gradient-background">
+                <div class="gradient-blob blob-1"></div>
+                <div class="gradient-blob blob-2"></div>
+                <div class="gradient-blob blob-3"></div>
+            </div>
+
+            <div class="content-card">
+                <h1 id="guide-title">Как писать промпты для генерации 3D-моделей</h1>
+                <p id="guide-description">Этот гайд поможет вам создавать эффективные запросы для генерации 3D-моделей в Structo. Следуйте этим рекомендациям для получения наилучших результатов.</p>
+                
+                <div class="guide-content">
+                    <h2 class="section-title">Основные параметры</h2>
+                    <ul id="guide-list" class="feature-list">
+                        <li>
+                            <div class="feature-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#feature-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <defs>
+                                        <linearGradient id="feature-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#6B5CE7" />
+                                            <stop offset="100%" stop-color="#FF5E93" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                </svg>
+                            </div>
+                            <div class="feature-text">
+                                <strong>Цвет:</strong> Укажите цвет объекта.
+                            </div>
+                        </li>
+                        <li>
+                            <div class="feature-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#feature-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                    <polyline points="2 17 12 22 22 17"></polyline>
+                                    <polyline points="2 12 12 17 22 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="feature-text">
+                                <strong>Форма:</strong> Опишите форму объекта.
+                            </div>
+                        </li>
+                        <li>
+                            <div class="feature-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#feature-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                            </div>
+                            <div class="feature-text">
+                                <strong>Размер:</strong> Укажите размер объекта.
+                            </div>
+                        </li>
+                    </ul>
+
+
+                    
+                    <div class="examples-section">
+                        <h2 class="section-title">Примеры промптов</h2>
+                        <div class="example-cards">
+                            <div class="example-card">
+                                <div class="example-text">Красный самолет длиной 30м</div>
+                            </div>
+                            <div class="example-card">
+                                <div class="example-text">Двухэтажный дом</div>
+                            </div>
+                            <div class="example-card">
+                                <div class="example-text">Человек из пластилина</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <a href="{{ url_for('main_page') }}" class="btn-primary back-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        Вернуться на главную
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        <!-- Упрощенный футер -->
+        <footer class="footer">
+            <div class="copyright">&copy; Structo, 2024-2025</div>
+            <div class="version">alpha v.1.5</div>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/prompt_guide.js') }}"></script>
+</body>
+</html>
