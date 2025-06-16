@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structo - Просмотр 3D-модели</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <!-- Favicon с корректным URL-кодированием -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%236c43ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'%3E%3C/path%3E%3Cpolyline points='7.5 4.21 12 6.81 16.5 4.21'%3E%3C/polyline%3E%3Cpolyline points='7.5 19.79 7.5 14.6 3 12'%3E%3C/polyline%3E%3Cpolyline points='21 12 16.5 14.6 16.5 19.79'%3E%3C/polyline%3E%3Cpolyline points='3.27 6.96 12 12.01 20.73 6.96'%3E%3C/polyline%3E%3Cline x1='12' y1='22.08' x2='12' y2='12'%3E%3C/line%3E%3C/svg%3E">
+    <link rel="alternate icon" type="image/png" href="favicon.png">
+
+    <!-- Подключаем библиотеки Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="loader-overlay">
+        <div class="flash-circle"></div>
+        <div class="loader-container">
+            <div class="loader">
+                <div class="box box0"><div></div></div>
+                <div class="box box1"><div></div></div>
+                <div class="box box2"><div></div></div>
+                <div class="box box3"><div></div></div>
+                <div class="box box4"><div></div></div>
+                <div class="box box5"><div></div></div>
+                <div class="box box6"><div></div></div>
+                <div class="box box7"><div></div></div>
+                <div class="ground"><div></div></div>
+            </div>
+        </div>
+    </div>
+    <div class="page-container">
+        <!-- Шапка сайта -->
+        <header class="header">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#logo-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#6B5CE7" />
+                            <stop offset="100%" stop-color="#FF5E93" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                    <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                    <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <a href="{{ url_for('index') }}" class="logo-text">Structo</a>
+            </div>
+            <div class="header-right">
+                <div class="lang-selector">
+                    <button class="lang-btn" onclick="setLanguage('ru')">RU</button>
+                    <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+                </div>
+                <a href="{{ url_for('main_page') }}" class="btn-link" id="new-generation">Новая генерация</a>
+                <button class="btn-link" id="account-link" onclick="openModal()">Аккаунт</button>
+            </div>
+        </header>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Градиентный фон -->
+            <div class="gradient-background">
+                <div class="gradient-blob blob-1"></div>
+                <div class="gradient-blob blob-2"></div>
+                <div class="gradient-blob blob-3"></div>
+            </div>
+
+            <!-- Панель информации о модели -->
+            <div class="model-info-panel">
+                <h2>Сгенерированная модель</h2>
+                <div class="model-prompt">
+                    <span class="label">Промпт:</span>
+                    <span class="value">{{ prompt }}</span>
+                </div>
+                <div class="model-created">
+                    <span class="label">Время создания:</span>
+                    <span class="value">{{ created_at }}</span>
+                </div>
+                <!-- Блок для сообщений об ошибках -->
+                <div class="error-message" style="display: none;"></div>
+            </div>
+
+            <!-- Блок результата с 3D моделью -->
+            <div class="result-box full-size" id="result-box">
+                <!-- Three.js контейнер будет добавлен здесь -->
+                <!-- Кнопка скачивания -->
+                <button id="download-button" class="download-btn" onclick="downloadModel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+                <div id="download-link-container">
+                    <a href="{{ download_url }}" id="download-url" class="download-link">Скачать 3D модель</a>
+                </div>
+
+                <!-- Управление камерой -->
+                <div class="camera-controls">
+                    <button id="reset-camera" class="camera-btn" onclick="resetCamera()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                            <path d="M21 3v5h-5"></path>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                            <path d="M8 16H3v5"></path>
+                        </svg>
+                        <span>Сбросить вид</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Упрощенный футер -->
+        <footer class="footer">
+            <div class="copyright">&copy; Structo, 2024-2025</div>
+            <div class="version">alpha v.1.5</div>
+        </footer>
+    </div>
+
+    <!-- Модальное окно для авторизации (такое же, как на главной) -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="auth-modal">
+            <button class="close-modal" onclick="closeModal()">&times;</button>
+            <h2 id="modal-title">Вход</h2>
+            
+            <!-- Форма логина -->
+            <div id="login-form">
+                <input type="text" id="login-username" placeholder="Логин" />
+                <input type="password" id="login-password" placeholder="Пароль" />
+                <div class="options-row">
+                    <div class="remember">
+                        <input type="checkbox" id="remember-me" />
+                        <label for="remember-me" id="remember-label">Запомнить меня</label>
+                    </div>
+                    <div class="forgot-link">
+                        <a href="#" id="forgot-link">Забыли пароль?</a>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button id="login-button" class="btn-primary" onclick="submitLogin()">Войти</button>
+                    <button id="switch-to-register" class="btn-secondary" onclick="switchToRegister()">Зарегистрироваться</button>
+                </div>
+            </div>
+
+            <!-- Форма регистрации -->
+            <div id="register-form" style="display:none;">
+                <input type="text" id="register-username" placeholder="Логин" />
+                <input type="password" id="register-password" placeholder="Пароль" />
+                <input type="password" id="register-password-confirm" placeholder="Повторите пароль" />
+                <input type="email" id="register-email" placeholder="Email" />
+                <div class="actions">
+                    <button id="register-button" class="btn-primary" onclick="submitRegister()">Зарегистрироваться</button>
+                    <button id="switch-to-login" class="btn-secondary" onclick="switchToLogin()">Назад</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Данные о модели, переданные с сервера
+        const modelUrl = "{{ model_url }}";
+        const downloadUrl = "{{ download_url }}";
+        const modelPrompt = "{{ prompt }}";
+        
+        // Глобальные переменные для сцены
+        let scene, camera, renderer, controls, loadedModel;
+        
+        // Функция для конвертации HTTP в HTTPS при необходимости
+        function secureUrl(url) {
+            // Если страница использует HTTPS, убедимся, что все URL тоже используют HTTPS
+            if (window.location.protocol === 'https:' && url.startsWith('http:')) {
+                console.log('Конвертация HTTP URL в HTTPS:', url);
+                return url.replace('http:', 'https:');
+            }
+            return url;
+        }
+        
+        // Функция для проверки, является ли URL абсолютным (т.е. начинается с http:// или https://)
+        function isAbsoluteUrl(url) {
+            return /^https?:\/\//i.test(url);
+        }
+        
+        // Функция для преобразования абсолютного URL в относительный
+        function makeRelativeUrl(url) {
+            try {
+                // Если URL абсолютный
+                if (isAbsoluteUrl(url)) {
+                    // Создаем объект URL
+                    const urlObj = new URL(url);
+                    
+                    // Проверяем, совпадает ли домен
+                    if (urlObj.hostname === window.location.hostname) {
+                        console.log('Преобразование абсолютного URL в относительный:', url);
+                        // Возвращаем только путь и параметры
+                        return urlObj.pathname + urlObj.search + urlObj.hash;
+                    }
+                }
+            } catch (e) {
+                console.error('Ошибка при преобразовании URL:', e);
+            }
+            // Возвращаем исходный URL, если не смогли преобразовать
+            return url;
+        }
+        
+        // Функция для проверки и загрузки файла модели с несколькими вариантами URL
+        function checkAndLoadFile(initialUrl, attempt = 1, maxAttempts = 10) {
+            // Массив возможных базовых URL для проверки
+            const possibleBaseUrls = [
+                '', // относительный путь
+                window.location.origin + '/', // текущий домен
+                'http://176.195.116.69:5678/' // IP-адрес сервера с портом
+            ];
+            
+            // Получаем имя файла из URL
+            const filename = initialUrl.split('/').pop();
+            const modelPathPart = 'static/models/' + filename;
+            
+            console.log(`Попытка ${attempt}/${maxAttempts}: Проверка доступности файла модели`);
+            console.log('Исходный URL модели:', initialUrl);
+            
+            // Выполняем последовательную проверку всех возможных URL
+            tryNextUrl(0);
+            
+            function tryNextUrl(urlIndex) {
+                if (urlIndex >= possibleBaseUrls.length) {
+                    // Если перепробовали все базовые URL в текущей попытке
+                    if (attempt < maxAttempts) {
+                        // Показываем сообщение о повторной попытке
+                        showErrorMessage(`Ожидание загрузки модели... (${attempt}/${maxAttempts})`);
+                        
+                        // Повторяем весь процесс через 1 секунду
+                        setTimeout(() => {
+                            checkAndLoadFile(initialUrl, attempt + 1, maxAttempts);
+                        }, 1000);
+                    } else {
+                        showErrorMessage('Не удалось загрузить модель. Файл недоступен по всем известным путям.');
+                    }
+                    return;
+                }
+                
+                // Формируем полный URL для текущей попытки
+                let currentUrl = possibleBaseUrls[urlIndex] + modelPathPart;
+                
+                // Добавляем параметр no-cache
+                currentUrl = currentUrl.includes('?') 
+                    ? `${currentUrl}&nocache=${new Date().getTime()}` 
+                    : `${currentUrl}?nocache=${new Date().getTime()}`;
+                
+                console.log(`Проверка URL ${urlIndex+1}/${possibleBaseUrls.length}:`, currentUrl);
+                
+                // Выполняем HEAD-запрос для проверки наличия файла
+                fetch(currentUrl, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            const fileSize = response.headers.get('Content-Length');
+                            console.log('Файл модели найден по URL:', currentUrl);
+                            console.log('Размер файла:', fileSize || 'не указан');
+                            
+                            // Файл найден, загружаем модель
+                            showErrorMessage('Модель найдена, загрузка...');
+                            loadModel(currentUrl);
+                        } else {
+                            console.log(`URL ${currentUrl} вернул статус ${response.status}, пробуем следующий...`);
+                            tryNextUrl(urlIndex + 1);
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`Ошибка при проверке URL ${currentUrl}:`, error);
+                        // При ошибке пробуем следующий URL
+                        tryNextUrl(urlIndex + 1);
+                    });
+            }
+        }
+        
+        // При загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Выводим информацию для отладки
+            console.log('Страница view_model загружена');
+            console.log('Полученный URL модели:', modelUrl);
+            console.log('Полученный URL для скачивания:', downloadUrl);
+            console.log('Полученный промпт:', modelPrompt);
+            
+            // Скрываем загрузочный экран
+            document.getElementById('loader-overlay').style.display = 'none';
+            
+            // Инициализируем сцену
+            initScene();
+            
+            // Добавляем дополнительную проверку URL модели
+            if (modelUrl && modelUrl.trim() !== '') {
+                // Декодируем URL, если он закодирован
+                let decodedUrl = modelUrl;
+                try {
+                    // Проверяем, если URL уже декодирован
+                    if (modelUrl.indexOf('%') !== -1) {
+                        decodedUrl = decodeURIComponent(modelUrl);
+                        console.log('URL модели декодирован:', decodedUrl);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при декодировании URL:', error);
+                }
+                
+                // Начинаем проверку и загрузку модели с несколькими вариантами URL
+                checkAndLoadFile(decodedUrl);
+            } else {
+                console.error('URL модели отсутствует или пуст');
+                showErrorMessage('URL модели не указан. Невозможно загрузить модель.');
+            }
+            
+            // Настраиваем ссылку для скачивания
+            if (downloadUrl && downloadUrl.trim() !== '') {
+                let decodedDownloadUrl = downloadUrl;
+                try {
+                    if (downloadUrl.indexOf('%') !== -1) {
+                        decodedDownloadUrl = decodeURIComponent(downloadUrl);
+                        console.log('URL для скачивания декодирован:', decodedDownloadUrl);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при декодировании URL для скачивания:', error);
+                }
+                
+                // Исправляем URL для скачивания
+                let processedDownloadUrl = decodedDownloadUrl;
+                
+                // Пробуем преобразовать в относительный URL, если возможно
+                if (isAbsoluteUrl(processedDownloadUrl)) {
+                    let relativeUrl = makeRelativeUrl(processedDownloadUrl);
+                    if (relativeUrl !== processedDownloadUrl) {
+                        processedDownloadUrl = relativeUrl;
+                    } else {
+                        // Иначе преобразуем HTTP в HTTPS
+                        processedDownloadUrl = secureUrl(processedDownloadUrl);
+                    }
+                }
+                
+                document.getElementById('download-url').href = processedDownloadUrl;
+                document.getElementById('download-button').style.display = 'block';
+                document.getElementById('download-link-container').style.display = 'block';
+            } else {
+                console.warn('URL для скачивания отсутствует');
+                document.getElementById('download-button').style.display = 'none';
+                document.getElementById('download-link-container').style.display = 'none';
+            }
+        });
+        
+        // Функция для отображения сообщения об ошибке
+        function showErrorMessage(message) {
+            // Создаем элемент сообщения, если его нет
+            let errorBox = document.querySelector('.error-message');
+            if (!errorBox) {
+                errorBox = document.createElement('div');
+                errorBox.className = 'error-message';
+                document.querySelector('.model-info-panel').appendChild(errorBox);
+            }
+            
+            errorBox.textContent = message;
+            errorBox.style.display = 'block';
+        }
+        
+        // Инициализация 3D сцены
+        function initScene() {
+            console.log('Инициализация 3D сцены');
+            const resultBox = document.getElementById('result-box');
+            
+            // Создаем сцену
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x252525);
+            
+            // Создаем камеру
+            camera = new THREE.PerspectiveCamera(75, resultBox.clientWidth / resultBox.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Создаем рендерер
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(resultBox.clientWidth, resultBox.clientHeight);
+            resultBox.appendChild(renderer.domElement);
+            
+            // Добавляем управление камерой
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            
+            // Добавляем освещение
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            // Добавляем направленное освещение сзади для объемности
+            const backLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            backLight.position.set(-1, -1, -1);
+            scene.add(backLight);
+            
+            // Добавляем координатные оси для отладки
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+            
+            // Начинаем рендеринг
+            animate();
+            
+            // Обработка изменения размера окна
+            window.addEventListener('resize', onWindowResize, false);
+            
+            console.log('3D сцена инициализирована успешно');
+        }
+        
+        // Функция загрузки модели
+        function loadModel(url) {
+            console.log('Начинаем загрузку модели:', url);
+            
+            // Создаем загрузчик OBJ
+            const loader = new THREE.OBJLoader();
+            
+            // Загружаем модель
+            loader.load(
+                url,
+                // Функция при успешной загрузке
+                function(obj) {
+                    console.log('Модель успешно загружена', obj);
+                    
+                    if (loadedModel) {
+                        // Если модель уже загружена, удаляем ее
+                        scene.remove(loadedModel);
+                        console.log('Удалена предыдущая модель');
+                    }
+                    
+                    loadedModel = obj;
+                    
+                    // Проверяем, есть ли дочерние элементы в загруженной модели
+                    if (obj.children.length === 0) {
+                        console.warn('Внимание: загруженная модель не содержит дочерних элементов');
+                    } else {
+                        console.log('Модель содержит', obj.children.length, 'дочерних элементов');
+                    }
+                    
+                    // Центрируем модель
+                    const box = new THREE.Box3().setFromObject(obj);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    
+                    console.log('Размеры модели:', size);
+                    console.log('Центр модели:', center);
+                    
+                    // Масштабируем модель, чтобы она полностью помещалась в экране
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    if (maxDim === 0 || !isFinite(maxDim)) {
+                        console.error('Ошибка при вычислении размеров модели: нулевой или бесконечный размер.');
+                        return;
+                    }
+                    
+                    const scale = 2 / maxDim;
+                    console.log('Применяем масштаб:', scale);
+                    obj.scale.set(scale, scale, scale);
+                    
+                    // Перемещаем модель так, чтобы она была в центре сцены
+                    obj.position.x = -center.x * scale;
+                    obj.position.y = -center.y * scale;
+                    obj.position.z = -center.z * scale;
+                    
+                    // Добавляем модель на сцену
+                    scene.add(obj);
+                    console.log('Модель добавлена на сцену');
+                    
+                    // Показываем элементы управления камерой
+                    document.querySelector('.camera-controls').style.display = 'block';
+                },
+                // Функция отображения прогресса загрузки
+                function(xhr) {
+                    const percent = xhr.loaded / xhr.total * 100;
+                    console.log(`${percent.toFixed(2)}% загружено`);
+                    
+                    // Можно добавить индикатор загрузки здесь
+                },
+                // Функция при ошибке загрузки
+                function(error) {
+                    console.error('Ошибка при загрузке модели:', error);
+                    showErrorMessage('Ошибка при загрузке 3D модели. Проверьте консоль для получения подробностей.');
+                    
+                    // Попробуем загрузить повторно через 3 секунды
+                    setTimeout(() => {
+                        console.log('Повторная попытка загрузки модели...');
+                        loadModel(url + '&retry=' + Math.random());
+                    }, 3000);
+                }
+            );
+        }
+        
+        // Анимация сцены
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+        
+        // Обработка изменения размера окна
+        function onWindowResize() {
+            const resultBox = document.getElementById('result-box');
+            if (camera && renderer) {
+                camera.aspect = resultBox.clientWidth / resultBox.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(resultBox.clientWidth, resultBox.clientHeight);
+            }
+        }
+        
+        // Сброс камеры в исходное положение
+        function resetCamera() {
+            if (camera && controls) {
+                camera.position.set(0, 0, 5);
+                camera.lookAt(0, 0, 0);
+                controls.reset();
+            }
+        }
+        
+        // Функция для скачивания модели
+        function downloadModel() {
+            if (downloadUrl) {
+                try {
+                    let actualDownloadUrl = downloadUrl;
+                    if (downloadUrl.indexOf('%') !== -1) {
+                        actualDownloadUrl = decodeURIComponent(downloadUrl);
+                    }
+                    
+                    // Обработка URL для предотвращения ошибок Mixed Content
+                    if (isAbsoluteUrl(actualDownloadUrl)) {
+                        let relativeUrl = makeRelativeUrl(actualDownloadUrl);
+                        if (relativeUrl !== actualDownloadUrl) {
+                            actualDownloadUrl = relativeUrl;
+                        } else {
+                            actualDownloadUrl = secureUrl(actualDownloadUrl);
+                        }
+                    }
+                    
+                    console.log('Скачивание модели по URL:', actualDownloadUrl);
+                    window.location.href = actualDownloadUrl;
+                } catch (error) {
+                    console.error('Ошибка при скачивании модели:', error);
+                    
+                    // В случае ошибки, попробуем использовать относительный путь
+                    try {
+                        const filename = downloadUrl.split('/').pop();
+                        const localUrl = `/static/models/${filename}`;
+                        console.log('Попытка скачивания из локального хранилища:', localUrl);
+                        window.location.href = localUrl;
+                    } catch (fallbackError) {
+                        console.error('Ошибка при попытке скачивания из локального хранилища:', fallbackError);
+                        showErrorMessage('Не удалось скачать модель. Пожалуйста, попробуйте позже.');
+                    }
+                }
+            } else {
+                console.error('URL для скачивания отсутствует');
+                showErrorMessage('URL для скачивания не указан.');
+            }
+        }
+        
+        // Функции для работы с авторизацией (те же, что в основном scripts.js)
+        function openModal() {
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+        
+        function switchToRegister() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('modal-title').textContent = 'Регистрация';
+        }
+        
+        function switchToLogin() {
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('modal-title').textContent = 'Вход';
+        }
+        
+        // Функция изменения языка
+        function setLanguage(lang) {
+            fetch('/set_language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lang: lang })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

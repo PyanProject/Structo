@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structo - Оплата подписки</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='subscriptions.css') }}">
+    <style>
+        .pay-container {
+            max-width: 480px;
+            margin: 60px auto 0 auto;
+            background: var(--bg-tertiary, #23232b);
+            border-radius: 22px;
+            box-shadow: 0 6px 32px rgba(0,0,0,0.18);
+            padding: 36px 32px 32px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .pay-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            background: var(--gradient-text);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        .pay-tariff {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+            color: var(--primary-color, #6B5CE7);
+        }
+        .pay-info {
+            background: #191922;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+            width: 100%;
+        }
+        .pay-label {
+            color: #aaa;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+        .pay-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .pay-comment {
+            font-size: 1rem;
+            color: #FF5E93;
+            background: #23232b;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+        .back-btn {
+            margin-top: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <header class="header">
+            <div class="logo">
+                <a href="/" class="logo-text">Structo</a>
+            </div>
+            <div class="header-right">
+                <a href="/subscriptions" class="btn-link">Подписки</a>
+            </div>
+        </header>
+        <main class="main-content">
+            <div class="pay-container">
+                <div class="pay-title">Оплата подписки</div>
+                <div class="pay-tariff">
+                    {% if plan == 'pro' %}Профессиональный тариф (499₽/мес){% elif plan == 'business' %}Бизнес тариф (1999₽/мес){% else %}Тариф не выбран{% endif %}
+                </div>
+                <div class="pay-info">
+                    <div class="pay-label">Переведите сумму на карту по телефону (ВТБ банк):</div>
+                    <div class="pay-value">+7 977 425 64**</div>
+                    <div class="pay-label">Комментарий к платежу:</div>
+                    <div class="pay-comment">structo_{{ plan }}_{{ session['user_id'] if 'user_id' in session else 'guest' }}</div>
+                </div>
+                <div style="color:#aaa; font-size:0.98rem; text-align:center; margin-bottom:10px;">После оплаты напишите на <a href="https://t.me/alvttt" style="color:#FF5E93;">@alvttt</a> для активации подписки.</div>
+                <a href="/subscriptions" class="back-btn">Назад к тарифам</a>
+            </div>
+        </main>
+        <footer class="footer">
+            <div class="copyright">&copy; Structo, 2024-2025</div>
+            <div class="version">beta 1.1</div>
+        </footer>
+    </div>
+</body>
+</html> 
